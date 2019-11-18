@@ -20,3 +20,8 @@
 .App-link {
   color: #09d3ac;
 }
+
+.dayCell {
+  min-height: 50px;
+  border: 1px solid black;
+}
