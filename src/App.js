@@ -4,7 +4,7 @@ import moment from 'moment';
 
 class MonthHandler {
   constructor() {
-    this.currentMonth = moment().add(5, 'month').format("YYYY-MM"); // MomentJS's months are 0 indexed
+    this.currentMonth = moment().add(0, 'month').format("YYYY-MM"); // MomentJS's months are 0 indexed
   }
 
   numberOfDaysInMonth(month, year) { 
@@ -13,8 +13,6 @@ class MonthHandler {
   }
 
   startingDayOfWeek(month, year) {
-    console.log(year + "-" + month + "-01");
-    console.log(new Date(year + "-" + month + "-01").getDay())
     return new Date(month + "-01-" + year).getDay(); // Fucking American date formatting, not ISO
   }
 
