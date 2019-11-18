@@ -22,6 +22,14 @@
 }
 
 .dayCell {
-  min-height: 50px;
+  width: 100%;
   border: 1px solid black;
+}
+
+.weekDisplay, .dayLabels {
+  display: flex;
+  justify-content: space-around;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
 }
