@@ -96,6 +96,14 @@ class Calendar extends React.Component {
     super(props);
   }
 
+  // TODO I'm not convinced this is the right level to populate the workout info.
+  getWorkoutDetails(date) {
+    return {
+      workoutType: "Recovery",
+      content: "20 miles \n 1 mile rest \n 3 miles tempo \n cooldown",
+    }
+  }
+
   fillDayArray() {
     const fullArrayLength = 42;
     const startingDayOfWeek = this.props.currentMonth.startingDayOfWeek;
@@ -105,9 +113,12 @@ class Calendar extends React.Component {
     let dayArray = Array(fullArrayLength).fill(null); // One month can span 6 weeks at maximum.
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const dayOfMonth = i - startingDayOfWeek + 1;
+      const date = datePrefix + "-" + dayOfMonth.toString(); // Format: YYYY-MM-D
+      const workoutDetails = this.getWorkoutDetails(date);
       dayArray.splice(i, 1, {
-        date: datePrefix + "-" + dayOfMonth.toString(), // Format: YYYY-MM-D
-        dayOfMonth: dayOfMonth
+        date: date,
+        dayOfMonth: dayOfMonth,
+        workoutDetails: workoutDetails,
       });
     } 
 
@@ -174,7 +185,10 @@ class WeekDisplay extends React.Component {
     const dayCells = days.map((value, index) => {
       return (
         <div className="dayCell" key={index}>
-          <DayCell dayOfMonth={value ? value.dayOfMonth : null}/>
+          <DayCell 
+            dayOfMonth={value ? value.dayOfMonth : null}
+            workoutDetails={value ? value.workoutDetails : {}} // apparently reading properties from an empty object doesn't fail?
+          />
         </div>
       );
     });
@@ -196,24 +210,25 @@ class DayCell extends React.Component {
   render() {
     return (
       <div>
-        <DayCellHeader dayOfMonth={this.props.dayOfMonth}/>
+        <DayCellHeader 
+          dayOfMonth={this.props.dayOfMonth}
+          workoutType={this.props.workoutDetails.workoutType}
+        />
+        <DayCellContentField
+          workoutContent={this.props.workoutDetails.content}
+        />
       </div>
     );
   }
 }
 
 class DayCellHeader extends React.Component {
-  constructor(props) {
-    super(props);
-
-  }
-
   render() {
 
     return (
       <span>
         <DayCellNumberDisplay dayOfMonth={this.props.dayOfMonth}/>
-        <RunTypeField />
+        <WorkoutTypeField workoutType={this.props.workoutType}/>
       </span>
     );
   }
@@ -226,10 +241,10 @@ class DayCellNumberDisplay extends React.Component {
   }
 }
 
-class RunTypeField extends React.Component {
+class WorkoutTypeField extends React.Component {
   render() {
 
-    return null;
+    return <h3>{this.props.workoutType}</h3>;
   }
 }
 
@@ -241,7 +256,7 @@ class DayCellContentField extends React.Component {
   
   render() {
 
-    return null;
+    return <p>{this.props.workoutContent}</p>;
   }
 }
 
