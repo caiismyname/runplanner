@@ -43,8 +43,12 @@ class MainPanel extends React.Component {
   constructor(props) {
     super(props);
 
+    const deadlineDate = "2020-11-20"; // TODO mocking data for now. 
+
     this.state = {
       currentMonth: new MonthHandler(),
+      isCalendarMode: false,
+      countdownDeadline: moment(deadlineDate),
     }
   }
 
@@ -55,57 +59,127 @@ class MainPanel extends React.Component {
   incrementMonth() {
     this.setState({currentMonth: this.state.currentMonth.incrementMonth()});
   } 
+
+  switchDisplayModes() {
+    this.setState({isCalendarMode: !this.state.isCalendarMode});
+  }
+
+  getWorkoutDetails(date) {
+    return {
+      workoutType: "Recovery",
+      content: "Run " + moment(date).format("D") + " miles",
+    }
+  }
+
+  generateHeaderDayLabels() {
+    let daysOfWeek = [];
+    let dayFormatting = "ddd"; // ddd = Mon | dddd = Monday 
+    for (let i = 0; i < 7; i++) {
+      // You know. In case they change the name of Monday or something.
+      daysOfWeek.push(moment().day(i).format(dayFormatting));
+    }
+    if (this.props.startsOnMonday) {
+      daysOfWeek = daysOfWeek.slice(1).concat(daysOfWeek[0]);
+    }
+    const dayLabels = daysOfWeek.map((value, index) => {
+      return (<span key={value}><h1>{value}</h1></span>);
+    });
+
+    return dayLabels;
+  }
   
   render() {
     const currentMonth = this.state.currentMonth;
+    const alternateDisplayMode = this.state.isCalendarMode ? "countdown" : "calendar";
+
+    let content;
+    if (this.state.isCalendarMode) {
+      content =         
+        <div>
+          <Calendar 
+            currentMonth={currentMonth.getMonthInfo()}
+            decrementMonthHandler={() => this.decrementMonth()}
+            incrementMonthHandler={() => this.incrementMonth()}  
+            getWorkoutDetailsFunc={(date) => this.getWorkoutDetails(date)}
+          />
+        </div>;
+    } else {
+      content = 
+        <div>
+          <CountdownView 
+            deadline={this.state.countdownDeadline}
+            getWorkoutDetailsFunc={(date) => this.getWorkoutDetails(date)}
+          />
+        </div>;
+    }
+
     return (
       <div>
-        <MonthControl 
-          currentMonth={currentMonth.getMonthInfo()}
-          decrementMonthHandler={() => this.decrementMonth()}
-          incrementMonthHandler={() => this.incrementMonth()}
-        />
-        <Calendar currentMonth={currentMonth.getMonthInfo()}/>
+        <button onClick={() => this.switchDisplayModes()}>{"Switch to " + alternateDisplayMode + " mode"}</button>
+        <div className="dayLabels">
+          {this.generateHeaderDayLabels()}
+        </div>
+        {content}
       </div>
     );
   }
 }
 
-class MonthControl extends React.Component {
-  constructor(props) {
-    super(props);
+class CountdownView extends React.Component {
+  fillDayArray(deadline) {
+    const startingDayOfWeek = Number(moment().format("d"));
+    // + 1 b/c we want to include the deadline day, + startingDayOfWeek because right now we cut off the days that have already passed.
+    // TODO show the full current week.
+    const fullArrayLength = Math.ceil(moment.duration(deadline.diff(moment())).asDays()) + 1 + startingDayOfWeek;
 
+    let dayArray = Array(fullArrayLength).fill(null);
+
+    const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.)
+    for (let i = startingDayOfWeek; i < fullArrayLength; i++) {
+      const dayOfMonth = currentDay.format("M/D/YY");
+      const date = currentDay.format("YYY-MM-D");
+      const workoutDetails = this.props.getWorkoutDetailsFunc(date);
+      currentDay.add(1, "day");
+
+      dayArray.splice(i, 1, {
+        date: date,
+        dayOfMonth: dayOfMonth,
+        workoutDetails: workoutDetails,
+      });
+    }
+
+    return dayArray;
   }
-
+  
   render() {
+    // Split days into weeks
+    const dayArray = this.fillDayArray(this.props.deadline);
+    const weeks = [];
+
+    for (let i = 0; i < dayArray.length; i += 7) {
+      weeks.push(dayArray.slice(i, i + 7));
+    }
+
+    const weekElements = weeks.map((value, index) => {
+      return (
+        <div key={index.toString()}>
+          <WeekDisplay days={value}/>
+        </div>
+      );
+    });
 
     return (
       <div>
-        <h1>{this.props.currentMonth.name + " " + moment(this.props.currentMonth.datePrefix).format("YYYY")}</h1>
-        <div>
-          <button onClick={() => this.props.decrementMonthHandler()}>{"<"}</button>
-          <button onClick={() => this.props.incrementMonthHandler()}>{">"}</button>
-        </div>
+        <h1>{"Countdown Mode!"}</h1>
+        {weekElements}
       </div>
     );
   }
 }
 
 class Calendar extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
-  // TODO I'm not convinced this is the right level to populate the workout info.
-  getWorkoutDetails(date) {
-    return {
-      workoutType: "Recovery",
-      content: "20 miles \n 1 mile rest \n 3 miles tempo \n cooldown",
-    }
-  }
-
   fillDayArray() {
-    const fullArrayLength = 42;
+    const fullArrayLength = 42; // 6 weeks * 7 days in a week
     const startingDayOfWeek = this.props.currentMonth.startingDayOfWeek;
     const totalDays = this.props.currentMonth.totalDays;
     const datePrefix = this.props.currentMonth.datePrefix;
@@ -114,7 +188,7 @@ class Calendar extends React.Component {
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const dayOfMonth = i - startingDayOfWeek + 1;
       const date = datePrefix + "-" + dayOfMonth.toString(); // Format: YYYY-MM-D
-      const workoutDetails = this.getWorkoutDetails(date);
+      const workoutDetails = this.props.getWorkoutDetailsFunc(date);
       dayArray.splice(i, 1, {
         date: date,
         dayOfMonth: dayOfMonth,
@@ -148,29 +222,34 @@ class Calendar extends React.Component {
       );
     });
 
-    // Generate day labels for header
-    let daysOfWeek = [];
-    let dayFormatting = "ddd"; // ddd = Mon | dddd = Monday 
-    for (let i = 0; i < 7; i++) {
-      // You know. In case they change the name of Monday or something.
-      daysOfWeek.push(moment().day(i).format(dayFormatting));
-    }
-    if (this.props.startsOnMonday) {
-      daysOfWeek = daysOfWeek.slice(1).concat(daysOfWeek[0]);
-    }
-    const dayLabels = daysOfWeek.map((value, index) => {
-      return (<span key={value}><h1>{value}</h1></span>);
-    });
 
     return (
       <div>
-        <div className="dayLabels">
-          {dayLabels}
-        </div>
+        <MonthControl 
+          currentMonth={this.props.currentMonth}
+          decrementMonthHandler={() => this.props.decrementMonthHandler()}
+          incrementMonthHandler={() => this.props.incrementMonthHandler()}
+        />
         {weekElements}
       </div>
     );
     
+  }
+}
+
+class MonthControl extends React.Component {
+  render() {
+
+    return (
+      <div>
+        {/* TODO this year display method is quite janky */}
+        <h1>{this.props.currentMonth.name + " " + moment(this.props.currentMonth.datePrefix).format("YYYY")}</h1>
+        <div>
+          <button onClick={() => this.props.decrementMonthHandler()}>{"<"}</button>
+          <button onClick={() => this.props.incrementMonthHandler()}>{">"}</button>
+        </div>
+      </div>
+    );
   }
 }
 
