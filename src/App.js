@@ -43,12 +43,18 @@ class MainPanel extends React.Component {
   constructor(props) {
     super(props);
 
-    const deadlineDate = "2019-12-20"; // TODO mocking data for now. 
+    const deadlineDate = "2019-12-22"; // TODO mocking data for now. 
 
     this.state = {
       currentMonth: new MonthHandler(),
       isCalendarMode: false,
       countdownDeadline: moment(deadlineDate),
+      workouts: {
+        "2019-11-0" : {
+          type: "Example",
+          content: "THis is sample content",
+        }
+      }
     }
   }
 
@@ -64,11 +70,23 @@ class MainPanel extends React.Component {
     this.setState({isCalendarMode: !this.state.isCalendarMode});
   }
 
-  getWorkoutDetails(date) {
+  getDayContent(date) {
+    if (date in this.state.workouts) {
+      return this.state.workouts[date];
+    }
     return {
-      workoutType: "Recovery",
+      type: "Recovery",
       content: "Run " + moment(date).format("D") + " miles",
     }
+  }
+
+  updateDayContent(date, content) {
+    // TODO this is mock implementation, to test the state updating methods down to daycellContent level
+    const workouts = this.state.workouts;
+    workouts[date] = content;
+    this.setState(
+      {workouts: workouts}
+    )
   }
 
   generateHeaderDayLabels() {
@@ -100,7 +118,8 @@ class MainPanel extends React.Component {
             currentMonth={currentMonth.getMonthInfo()}
             decrementMonthHandler={() => this.decrementMonth()}
             incrementMonthHandler={() => this.incrementMonth()}  
-            getWorkoutDetailsFunc={(date) => this.getWorkoutDetails(date)}
+            getDayContentFunc={(date) => this.getDayContent(date)}
+            updateDayContentFunc={(date, content) => this.updateDayContent(date, content)}
           />
         </div>;
     } else {
@@ -108,7 +127,8 @@ class MainPanel extends React.Component {
         <div>
           <CountdownView 
             deadline={this.state.countdownDeadline}
-            getWorkoutDetailsFunc={(date) => this.getWorkoutDetails(date)}
+            getDayContentFunc={(date) => this.getDayContent(date)}
+            updateDayContentFunc={(date, content) => this.updateDayContent(date, content)}
           />
         </div>;
     }
@@ -137,14 +157,14 @@ class CountdownView extends React.Component {
 
     const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.)
     for (let i = startingDayOfWeek; i < daysUntilDeadline; i++) {
-      const dayOfMonth = currentDay.format("M/D/YY");
-      const date = currentDay.format("YYY-MM-D");
-      const workoutDetails = this.props.getWorkoutDetailsFunc(date);
+      const displayDate = currentDay.format("M/D/YY");
+      const date = currentDay.format("YYYY-MM-D");
+      const workoutDetails = this.props.getDayContentFunc(date);
       currentDay.add(1, "day");
 
       dayArray.splice(i, 1, {
         date: date,
-        dayOfMonth: dayOfMonth,
+        displayDate: displayDate,
         workoutDetails: workoutDetails,
       });
     }
@@ -164,7 +184,7 @@ class CountdownView extends React.Component {
     const weekElements = weeks.map((value, index) => {
       return (
         <div key={index.toString()}>
-          <WeekDisplay days={value}/>
+          <WeekDisplay days={value} updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}/>
         </div>
       );
     });
@@ -189,7 +209,7 @@ class Calendar extends React.Component {
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const dayOfMonth = i - startingDayOfWeek + 1;
       const date = datePrefix + "-" + dayOfMonth.toString(); // Format: YYYY-MM-D
-      const workoutDetails = this.props.getWorkoutDetailsFunc(date);
+      const workoutDetails = this.props.getDayContentFunc(date);
       dayArray.splice(i, 1, {
         date: date,
         dayOfMonth: dayOfMonth,
@@ -266,8 +286,10 @@ class WeekDisplay extends React.Component {
       return (
         <div className="dayCell" key={index}>
           <DayCell 
-            dayOfMonth={value ? value.dayOfMonth : null}
+            displayDate={value ? value.displayDate : null} // TODO: in a refactor, remove this field and derive it from "date" below.
+            date={value ? value.date : null}
             workoutDetails={value ? value.workoutDetails : {}} // apparently reading properties from an empty object doesn't fail?
+            updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
           />
         </div>
       );
@@ -285,58 +307,42 @@ class DayCell extends React.Component {
   constructor(props) {
     super(props);
 
-  }
-
-  render() {
-    return (
-      <div>
-        <DayCellHeader 
-          dayOfMonth={this.props.dayOfMonth}
-          workoutType={this.props.workoutDetails.workoutType}
-        />
-        <DayCellContentField
-          workoutContent={this.props.workoutDetails.content}
-        />
-      </div>
-    );
-  }
-}
-
-class DayCellHeader extends React.Component {
-  render() {
-
-    return (
-      <span>
-        <DayCellNumberDisplay dayOfMonth={this.props.dayOfMonth}/>
-        <WorkoutTypeField workoutType={this.props.workoutType}/>
-      </span>
-    );
-  }
-}
-
-class DayCellNumberDisplay extends React.Component {
-  render() {
-
-    return <h2>{this.props.dayOfMonth}</h2>;
-  }
-}
-
-class WorkoutTypeField extends React.Component {
-  render() {
-
-    return <h3>{this.props.workoutType}</h3>;
-  }
-}
-
-class DayCellContentField extends React.Component {
-  constructor(props) {
-    super(props);
-
+    this.handleWorkoutContentChange = this.handleWorkoutContentChange.bind(this);
+    this.handleWorkoutTypeChange = this.handleWorkoutTypeChange.bind(this);
   }
   
-  render() {
+  handleWorkoutContentChange(event) {
+    const newContent = {
+      type: this.props.workoutDetails.type,
+      content: event.target.value,
+    }
+    this.props.updateDayContentFunc(this.props.date, newContent);
+  }
 
-    return <p>{this.props.workoutContent}</p>;
+  handleWorkoutTypeChange(event) {
+    const newContent = {
+      type: event.target.value,
+      content: this.props.workoutDetails.content,
+    }
+    this.props.updateDayContentFunc(this.props.date, newContent);
+  }
+
+  render() {
+    let contentField;
+    if (this.props.workoutDetails.content) {
+      contentField = <textarea value={this.props.workoutDetails.content} onChange={this.handleWorkoutContentChange}/>;
+    } else {
+      // Prevents displaying an empty text box on empty days
+      contentField = null;
+    }
+
+    return (
+      <div>
+        <h2>{this.props.displayDate}</h2>
+        <textarea value={this.props.workoutDetails.type} onChange={this.handleWorkoutTypeChange}/> {/* don't forget to style this lol*/}
+        {contentField}
+      </div>
+    );
   }
 }
 
