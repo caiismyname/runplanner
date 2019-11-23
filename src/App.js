@@ -43,7 +43,7 @@ class MainPanel extends React.Component {
   constructor(props) {
     super(props);
 
-    const deadlineDate = "2020-11-20"; // TODO mocking data for now. 
+    const deadlineDate = "2019-12-20"; // TODO mocking data for now. 
 
     this.state = {
       currentMonth: new MonthHandler(),
@@ -130,12 +130,13 @@ class CountdownView extends React.Component {
     const startingDayOfWeek = Number(moment().format("d"));
     // + 1 b/c we want to include the deadline day, + startingDayOfWeek because right now we cut off the days that have already passed.
     // TODO show the full current week.
-    const fullArrayLength = Math.ceil(moment.duration(deadline.diff(moment())).asDays()) + 1 + startingDayOfWeek;
-
-    let dayArray = Array(fullArrayLength).fill(null);
+    const daysUntilDeadline = Math.ceil(moment.duration(deadline.diff(moment())).asDays()) + 1 + startingDayOfWeek;
+    // Pad the end of array if the deadline date is not the end of the week (as displayed);
+    const fullArrayLength = daysUntilDeadline + (daysUntilDeadline % 7 == 0 ? 0 : 7 - daysUntilDeadline % 7); 
+    const dayArray = Array(fullArrayLength).fill(null);
 
     const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.)
-    for (let i = startingDayOfWeek; i < fullArrayLength; i++) {
+    for (let i = startingDayOfWeek; i < daysUntilDeadline; i++) {
       const dayOfMonth = currentDay.format("M/D/YY");
       const date = currentDay.format("YYY-MM-D");
       const workoutDetails = this.props.getWorkoutDetailsFunc(date);
@@ -225,7 +226,7 @@ class Calendar extends React.Component {
 
     return (
       <div>
-        <MonthControl 
+        <CalendarMonthControl 
           currentMonth={this.props.currentMonth}
           decrementMonthHandler={() => this.props.decrementMonthHandler()}
           incrementMonthHandler={() => this.props.incrementMonthHandler()}
@@ -237,7 +238,7 @@ class Calendar extends React.Component {
   }
 }
 
-class MonthControl extends React.Component {
+class CalendarMonthControl extends React.Component {
   render() {
 
     return (
