@@ -3,6 +3,7 @@ import './App.css';
 import moment from 'moment';
 
 class MonthHandler {
+  // Defaults to current month if none is given
   constructor(now = moment()) {
     this.currentMonth = now; // MomentJS's months are 0 indexed
   }
@@ -23,10 +24,9 @@ class MonthHandler {
   getMonthInfo() {
     const now = this.currentMonth; // Moment's months are 0 indexed (0 is January)
     return ({
-      name: now.format("MMMM"),
       totalDays: this.numberOfDaysInMonth(now.month() + 1, now.year()),
       startingDayOfWeek: this.startingDayOfWeek(now.month() + 1, now.year()), // 0 is Sunday
-      datePrefix: now.format("YYYY-MM"),
+      month: now.format("YYYY-MM"),
     });
   }
 
@@ -155,16 +155,14 @@ class CountdownView extends React.Component {
     const fullArrayLength = daysUntilDeadline + (daysUntilDeadline % 7 == 0 ? 0 : 7 - daysUntilDeadline % 7); 
     const dayArray = Array(fullArrayLength).fill(null);
 
-    const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.)
+    const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.
     for (let i = startingDayOfWeek; i < daysUntilDeadline; i++) {
-      const displayDate = currentDay.format("M/D/YY");
       const date = currentDay.format("YYYY-MM-D");
       const workoutDetails = this.props.getDayContentFunc(date);
       currentDay.add(1, "day");
 
       dayArray.splice(i, 1, {
         date: date,
-        displayDate: displayDate,
         workoutDetails: workoutDetails,
       });
     }
@@ -200,21 +198,22 @@ class CountdownView extends React.Component {
 
 class Calendar extends React.Component {
   fillDayArray() {
-    const fullArrayLength = 42; // 6 weeks * 7 days in a week
+    const fullArrayLength = 42; // 6 weeks * 7 days in a week. One month can span 6 weeks at maximum.
     const startingDayOfWeek = this.props.currentMonth.startingDayOfWeek;
     const totalDays = this.props.currentMonth.totalDays;
-    const datePrefix = this.props.currentMonth.datePrefix;
+    const month = this.props.currentMonth.month;
 
-    let dayArray = Array(fullArrayLength).fill(null); // One month can span 6 weeks at maximum.
+    let dayArray = Array(fullArrayLength).fill(null); 
+    const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
-      const dayOfMonth = i - startingDayOfWeek + 1;
-      const date = datePrefix + "-" + dayOfMonth.toString(); // Format: YYYY-MM-D
+      const date = currentDay.format("YYYY-MM-D");
       const workoutDetails = this.props.getDayContentFunc(date);
       dayArray.splice(i, 1, {
         date: date,
-        dayOfMonth: dayOfMonth,
         workoutDetails: workoutDetails,
       });
+
+      currentDay.add(1, "day");
     } 
 
     // Filling the array to 6 weeks is the maximum case, but most months don't span 6 calendar weeks.
@@ -238,7 +237,7 @@ class Calendar extends React.Component {
     const weekElements = weeks.map((value, index) => {
       return (
         <div key={index.toString()}>
-          <WeekDisplay days={value}/>
+          <WeekDisplay days={value} updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}/>
         </div>
       );
     });
@@ -263,8 +262,7 @@ class CalendarMonthControl extends React.Component {
 
     return (
       <div>
-        {/* TODO this year display method is quite janky */}
-        <h1>{this.props.currentMonth.name + " " + moment(this.props.currentMonth.datePrefix).format("YYYY")}</h1>
+        <h1>{moment(this.props.currentMonth.month).format("MMMM YYYY")}</h1>
         <div>
           <button onClick={() => this.props.decrementMonthHandler()}>{"<"}</button>
           <button onClick={() => this.props.incrementMonthHandler()}>{">"}</button>
@@ -286,7 +284,6 @@ class WeekDisplay extends React.Component {
       return (
         <div className="dayCell" key={index}>
           <DayCell 
-            displayDate={value ? value.displayDate : null} // TODO: in a refactor, remove this field and derive it from "date" below.
             date={value ? value.date : null}
             workoutDetails={value ? value.workoutDetails : {}} // apparently reading properties from an empty object doesn't fail?
             updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
@@ -327,6 +324,13 @@ class DayCell extends React.Component {
     this.props.updateDayContentFunc(this.props.date, newContent);
   }
 
+  generateDisplayDate() {
+    if (!this.props.date) {
+      return null;
+    }
+    return moment(this.props.date).format("M/DD/YY");
+  }
+
   render() {
     let contentField;
     if (this.props.workoutDetails.content) {
@@ -338,7 +342,7 @@ class DayCell extends React.Component {
 
     return (
       <div>
-        <h2>{this.props.displayDate}</h2>
+        <h2>{this.generateDisplayDate()}</h2>
         <textarea value={this.props.workoutDetails.type} onChange={this.handleWorkoutTypeChange}/> {/* don't forget to style this lol*/}
         {contentField}
       </div>
