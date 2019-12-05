@@ -1,6 +1,8 @@
 import React from 'react';
 import './App.css';
 import moment from 'moment';
+import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+// import axios from "axios";
 
 class MonthHandler {
   // Defaults to current month if none is given
@@ -352,9 +354,10 @@ class DayCell extends React.Component {
 
 function App() {
   return (
-    <div className="App">
-      <MainPanel />
-    </div>
+    <Router>
+      <Route path="/" exact component={MainPanel}/>
+    </Router>
+    
   );
 }
 
