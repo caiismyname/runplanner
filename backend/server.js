@@ -73,6 +73,9 @@ runplannerRoutes.route("/updateuser/:id").post(function(req, res) {
 
 runplannerRoutes.route("/addworkout").post(function(req, res) {
     let workout = new Workouts(req.body);
+
+    // TODO Validate that workout owner exists
+
     workout.save()
         .then(workout => {res.status(200).json("Workout added successfully")})
         .catch(err => {res.status(400).send("Adding new workout failed")});
@@ -118,14 +121,19 @@ runplannerRoutes.route("/updateworkout/:id").post(function(req, res) {
 
 // })
 
-runplannerRoutes.route("/getworkoutforownerforday/:id/:date").get(function(req, res) {
+runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req, res) {
     Workouts.findOne(
-        {_id:req.params.id, date:req.params.date}, 
-        (err, items) => {
+        {workout_owner: req.params.id, workout_date: req.params.date}, 
+        (err, item) => {
             if (err) {
                 console.log(err);
             } else {
-                res.json(items);
+                if (!item) {
+                    res.status(404).send("Workout not found");
+                } else {
+                    res.json(item);
+                }
+                
             }
         }
     );
