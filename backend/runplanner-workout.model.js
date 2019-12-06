@@ -7,7 +7,7 @@ let Workout = new Schema({
         required: [true, "Workouts must have owners"]
     },
     workout_date: {
-        type: String,
+        type: Date,
     },
     workout_type: {
         type: String,

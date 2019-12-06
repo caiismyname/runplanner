@@ -2,7 +2,7 @@ import React from 'react';
 import './App.css';
 import moment from 'moment';
 import { BrowserRouter as Router, Route, Link } from "react-router-dom";
-// import axios from "axios";
+import axios from "axios";
 
 class MonthHandler {
   // Defaults to current month if none is given
@@ -14,7 +14,7 @@ class MonthHandler {
     return this.currentMonth.format("YYYY-MM"); 
   }
 
-  numberOfDaysInMonth(month, year) { 
+  getNumberOfDaysInMonth(month, year) { 
     // Source: https://www.geeksforgeeks.org/how-to-get-the-number-of-days-in-a-specified-month-using-javascript/
     return new Date(year, month, 0).getDate(); 
   }
@@ -26,7 +26,7 @@ class MonthHandler {
   getMonthInfo() {
     const now = this.currentMonth; // Moment's months are 0 indexed (0 is January)
     return ({
-      totalDays: this.numberOfDaysInMonth(now.month() + 1, now.year()),
+      totalDays: this.getNumberOfDaysInMonth(now.month() + 1, now.year()),
       startingDayOfWeek: this.startingDayOfWeek(now.month() + 1, now.year()), // 0 is Sunday
       month: now.format("YYYY-MM"),
     });
@@ -49,15 +49,15 @@ class MainPanel extends React.Component {
 
     this.state = {
       currentMonth: new MonthHandler(),
-      isCalendarMode: false,
+      isCalendarMode: true,
       countdownDeadline: moment(deadlineDate),
-      workouts: {
-        "2019-11-0" : {
-          type: "Example",
-          content: "THis is sample content",
-        }
-      }
+      workouts: {},
+      ownerID: "5de9d568e8826440f31d0327", // again, mocking
     }
+  }
+
+  componentDidMount() {
+    this.populateWorkouts();
   }
 
   decrementMonth() {
@@ -72,16 +72,33 @@ class MainPanel extends React.Component {
     this.setState({isCalendarMode: !this.state.isCalendarMode});
   }
 
-  getDayContent(date) {
-    if (date in this.state.workouts) {
-      return this.state.workouts[date];
+  populateWorkouts() {
+    let stored_workouts = this.state.workouts;
+    if (this.state.isCalendarMode) {
+      const monthInfo = this.state.currentMonth.getMonthInfo();
+      const monthStart = monthInfo["month"] + "-1";
+      const monthEnd = monthInfo["month"] + "-" + monthInfo["totalDays"];
+      axios.get('http://localhost:4000/runplannerDB/getworkoutsforownerfordaterange/' + this.state.ownerID + "/" + monthStart + "/" + monthEnd)
+        .then(response => {
+          if (response) {
+            response.data.forEach(workout => {
+              // Current choice is to always overwrite local info with DB info if conflict exists. 
+              // This may not be wise later on. 
+              stored_workouts[workout["date"]] = workout;
+            });
+            
+            console.log(stored_workouts);
+            this.setState({workouts: stored_workouts});
+            console.log(this.state.workouts);
+          }
+        });
+    } else {
+      // countdown mode
     }
-    return {
-      type: "Recovery",
-      content: "Run " + moment(date).format("D") + " miles",
-    }
-  }
 
+    
+  }
+  
   updateDayContent(date, content) {
     // TODO this is mock implementation, to test the state updating methods down to daycellContent level
     const workouts = this.state.workouts;
@@ -120,7 +137,7 @@ class MainPanel extends React.Component {
             currentMonth={currentMonth.getMonthInfo()}
             decrementMonthHandler={() => this.decrementMonth()}
             incrementMonthHandler={() => this.incrementMonth()}  
-            getDayContentFunc={(date) => this.getDayContent(date)}
+            workouts={this.state.workouts}
             updateDayContentFunc={(date, content) => this.updateDayContent(date, content)}
           />
         </div>;
@@ -129,7 +146,7 @@ class MainPanel extends React.Component {
         <div>
           <CountdownView 
             deadline={this.state.countdownDeadline}
-            getDayContentFunc={(date) => this.getDayContent(date)}
+            workouts={this.state.workouts}
             updateDayContentFunc={(date, content) => this.updateDayContent(date, content)}
           />
         </div>;
@@ -160,7 +177,7 @@ class CountdownView extends React.Component {
     const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.
     for (let i = startingDayOfWeek; i < daysUntilDeadline; i++) {
       const date = currentDay.format("YYYY-MM-D");
-      const workoutDetails = this.props.getDayContentFunc(date);
+      const workoutDetails = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : {};
       currentDay.add(1, "day");
 
       dayArray.splice(i, 1, {
@@ -209,7 +226,7 @@ class Calendar extends React.Component {
     const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const date = currentDay.format("YYYY-MM-D");
-      const workoutDetails = this.props.getDayContentFunc(date);
+      const workoutDetails = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : {};
       dayArray.splice(i, 1, {
         date: date,
         workoutDetails: workoutDetails,

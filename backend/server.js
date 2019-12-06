@@ -5,12 +5,16 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const runplannerRoutes = express.Router();
 const PORT = 4000;
+const moment = require("moment");
 
 let Workouts = require("./runplanner-workout.model");
 let Users = require("./runplanner-user.model");
 
 app.use(cors());
 app.use(bodyParser.json());
+
+let dateFormat = "YYYY-MM-D";
+
 
 mongoose.connect(
     "mongodb://127.0.0.1:27017/runplanner", 
@@ -138,6 +142,27 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
         }
     );
 });
+
+runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
+    Workouts.find(
+        { 
+            workout_date: { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
+            workout_owner: req.params.id
+        },
+        (err, items) => {
+            let timeFormattedItems = items.map(workout => {
+                const formattedWorkout = 
+                    {
+                        "date": moment(workout["workout_date"]).format(dateFormat),
+                        "type": workout["workout_type"],
+                        "content": workout["workout_content"]
+                    };
+                return formattedWorkout;
+            })
+            res.json(timeFormattedItems);
+        }
+    );
+})
 
 app.use("/runplannerDB", runplannerRoutes);
 app.listen(PORT, function() {
