@@ -103,10 +103,12 @@ runplannerRoutes.route("/updateworkout/:id").post(function(req, res) {
         if (!workout) {
             res.status(404).send("Workout not found");
         } else {
-            workout.workout_owner = req.body.workout_owner;
-            workout.workout_date = req.body.workout_date;
-            workout.workout_type = req.body.workout_type;
-            workout.workout_content = req.body.workout_content;
+            workout.owner = req.body.owner;
+            workout.date = req.body.date;
+            workout.payload = {
+                "type": req.body.type,
+                "content": req.body.content,
+            }
 
             workout.save()
                 .then(workout => {res.json("Workout updated")})
@@ -127,7 +129,7 @@ runplannerRoutes.route("/updateworkout/:id").post(function(req, res) {
 
 runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req, res) {
     Workouts.findOne(
-        {workout_owner: req.params.id, workout_date: req.params.date}, 
+        {owner: req.params.id, date: req.params.date}, 
         (err, item) => {
             if (err) {
                 console.log(err);
@@ -144,21 +146,20 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
 });
 
 runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
+    console.log(new Date(req.params.gtedate));
+    console.log(new Date(req.params.ltedate));
     Workouts.find(
         { 
-            workout_date: { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
-            workout_owner: req.params.id
+            date: { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
+            owner: req.params.id
         },
         (err, items) => {
-            let timeFormattedItems = items.map(workout => {
-                const formattedWorkout = 
-                    {
-                        "date": moment(workout["workout_date"]).format(dateFormat),
-                        "type": workout["workout_type"],
-                        "content": workout["workout_content"]
-                    };
-                return formattedWorkout;
-            })
+            let timeFormattedItems = items.map(workout => { 
+                return {  
+                    "payload": workout["payload"],
+                    "date": moment(workout["date"]).format(dateFormat),
+                }
+            });
             res.json(timeFormattedItems);
         }
     );

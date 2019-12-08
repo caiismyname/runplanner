@@ -32,6 +32,15 @@ class MonthHandler {
     });
   }
 
+  getMonthStart() {
+    return this.getMonthInfo()["month"] + "-1";
+  }
+
+  getMonthEnd() {
+    const monthInfo = this.getMonthInfo();
+    return monthInfo["month"] + "-" + monthInfo["totalDays"];
+  }
+
   incrementMonth() {
     return new MonthHandler(this.currentMonth.add(1, "month"));
   }
@@ -75,16 +84,18 @@ class MainPanel extends React.Component {
   populateWorkouts() {
     let stored_workouts = this.state.workouts;
     if (this.state.isCalendarMode) {
-      const monthInfo = this.state.currentMonth.getMonthInfo();
-      const monthStart = monthInfo["month"] + "-1";
-      const monthEnd = monthInfo["month"] + "-" + monthInfo["totalDays"];
-      axios.get('http://localhost:4000/runplannerDB/getworkoutsforownerfordaterange/' + this.state.ownerID + "/" + monthStart + "/" + monthEnd)
+      axios.get('http://localhost:4000/runplannerDB/getworkoutsforownerfordaterange/' 
+                  + this.state.ownerID + "/" 
+                  + this.state.currentMonth.getMonthStart() + "/"
+                  + this.state.currentMonth.getMonthEnd())
         .then(response => {
+          console.log(response);
           if (response) {
             response.data.forEach(workout => {
               // Current choice is to always overwrite local info with DB info if conflict exists. 
               // This may not be wise later on. 
-              stored_workouts[workout["date"]] = workout;
+              console.log("foo" + workout);
+              stored_workouts[workout["date"]] = workout["payload"];
             });
             
             console.log(stored_workouts);
@@ -95,8 +106,6 @@ class MainPanel extends React.Component {
     } else {
       // countdown mode
     }
-
-    
   }
   
   updateDayContent(date, content) {

@@ -2,19 +2,21 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 let Workout = new Schema({
-    workout_owner: {
+    owner: {
         type: String,
         required: [true, "Workouts must have owners"]
     },
-    workout_date: {
+    date: {
         type: Date,
     },
-    workout_type: {
-        type: String,
-        enum: ["Workout", "Recovery", "Long Run", "Race"]
-    },
-    workout_content: {
-        type: String,
+    payload: {
+        type: {
+            type: String,
+            enum: ["Workout", "Recovery", "Long Run", "Race"]
+        },
+        content: {
+            type: String,
+        }
     }
 });
 
