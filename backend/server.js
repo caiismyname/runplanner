@@ -13,7 +13,7 @@ let Users = require("./runplanner-user.model");
 app.use(cors());
 app.use(bodyParser.json());
 
-let dateFormat = "YYYY-MM-D";
+let serverDateFormat = "YYYY-MM-D";
 
 
 mongoose.connect(
@@ -157,7 +157,7 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
             let timeFormattedItems = items.map(workout => { 
                 return {  
                     "payload": workout["payload"],
-                    "date": moment(workout["date"]).format(dateFormat),
+                    "date": moment(workout["date"]).format(serverDateFormat),
                 }
             });
             res.json(timeFormattedItems);
