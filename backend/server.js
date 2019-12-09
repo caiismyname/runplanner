@@ -59,8 +59,8 @@ runplannerRoutes.route("/updateuser/:id").post(function(req, res) {
             res.status(404).send("User not found");
         } else {
             user.name = req.body.name;
-            user.starts_on_monday = req.body.starts_on_monday;
-            user.default_view = req.body.default_view;
+            user.config = req.body.config;
+            user.countdownConfig = req.body.countdownConfig;
 
             user.save()
                 .then(user => {res.status(200).json("User updated")})
@@ -123,6 +123,22 @@ runplannerRoutes.route("/updateworkout/:id").post(function(req, res) {
 //
 //
 
+runplannerRoutes.route("/getuser/:id").get(function(req, res){ 
+    Users.findOne({_id: req.params.id}, (err, item) => {
+        if (err) {
+            console.log(err);
+        } else {
+            if (!item) {
+                res.status(404).send("User not found");
+            } else {
+                const timeFormattedItem = JSON.parse(JSON.stringify(item)); // deep copy. remember, avoid mutating/reassigning params
+                timeFormattedItem.countdownConfig.deadline = moment(item.countdownConfig.deadline).format(serverDateFormat);
+                res.json(timeFormattedItem);
+            }
+        }
+    });
+})
+
 // runplannerRoutes.route("/getworkoutsforowner:id").get(function(req, res) {
 
 // })
@@ -146,21 +162,25 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
 });
 
 runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
-    console.log(new Date(req.params.gtedate));
-    console.log(new Date(req.params.ltedate));
+    // console.log(new Date(req.params.gtedate));
+    // console.log(new Date(req.params.ltedate));
     Workouts.find(
         { 
             date: { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
             owner: req.params.id
         },
         (err, items) => {
-            let timeFormattedItems = items.map(workout => { 
-                return {  
-                    "payload": workout["payload"],
-                    "date": moment(workout["date"]).format(serverDateFormat),
-                }
-            });
-            res.json(timeFormattedItems);
+            if (err) {
+                console.log(err);
+            } else {
+                let timeFormattedItems = items.map(workout => { 
+                    return {  
+                        "payload": workout["payload"],
+                        "date": moment(workout["date"]).format(serverDateFormat),
+                    }
+                });
+                res.json(timeFormattedItems);
+            }
         }
     );
 })

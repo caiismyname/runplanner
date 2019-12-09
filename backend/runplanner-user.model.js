@@ -4,10 +4,15 @@ const Schema = mongoose.Schema;
 let User = new Schema({
     name: String,
     config: {
-        starts_on_monday: Boolean,
-        default_view: {
+        startsOnMonday: Boolean,
+        defaultView: {
             type: String,
             enum: ["calendar", "countdown"]
+        }
+    },
+    countdownConfig: {
+        deadline: {
+            type: Date,
         }
     }
 });

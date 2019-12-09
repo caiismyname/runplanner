@@ -1,10 +1,11 @@
 import React from 'react';
 import './App.css';
 import moment from 'moment';
-import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
 
 let serverDateFormat = "YYYY-MM-D";
+let dbAddress = "http://localhost:4000/runplannerDB/";
 
 class MonthHandler {
   // Defaults to current month if none is given
@@ -35,12 +36,12 @@ class MonthHandler {
   }
 
   getMonthStart() {
-    return this.getMonthInfo()["month"] + "-1";
+    return this.getMonthInfo().month + "-1";
   }
 
   getMonthEnd() {
     const monthInfo = this.getMonthInfo();
-    return monthInfo["month"] + "-" + monthInfo["totalDays"];
+    return monthInfo.month + "-" + monthInfo.totalDays;
   }
 
   incrementMonth() {
@@ -58,15 +59,16 @@ class MainPanel extends React.Component {
 
     this.state = {
       currentMonth: new MonthHandler(),
+      ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
+      name: "",
       isCalendarMode: false,
-      countdownDeadline: "2020-1-22", // TODO mock
       workouts: {},
-      ownerID: "5de9d568e8826440f31d0327", // TODO mocking
+      countdownConfig: {},
     }
   }
 
   componentDidMount() {
-    this.populateWorkouts();
+    this.populateUser(this.populateWorkouts.bind(this));
   }
 
   decrementMonth() {
@@ -81,6 +83,20 @@ class MainPanel extends React.Component {
     this.setState({isCalendarMode: !this.state.isCalendarMode});
   }
 
+  populateUser(callback) {
+    axios.get(dbAddress + "getuser/" + this.state.ownerID)
+      .then(response => {
+        this.setState({
+          "name": response.data.name,
+          "isCalendarMode": response.data.config.default_view === "calendar",
+          "countdownConfig": response.data.countdownConfig,
+        });
+        
+        // Callback used to ensure config data is in place before populating workouts
+        callback();
+      })
+  }
+
   populateWorkouts() {
     const stored_workouts = this.state.workouts;
     let startDate;
@@ -91,29 +107,29 @@ class MainPanel extends React.Component {
       endDate = this.state.currentMonth.getMonthEnd()
     } else { // Countdown mode
       startDate = moment().format(serverDateFormat);
-      endDate = this.state.countdownDeadline;
+      endDate = this.state.countdownConfig.deadline;
     }
 
-    axios.get('http://localhost:4000/runplannerDB/getworkoutsforownerfordaterange/' 
+    axios.get(dbAddress + "getworkoutsforownerfordaterange/" 
       + this.state.ownerID + "/" 
       + startDate + "/"
       + endDate)
-    .then(response => {
-      if (response) {
-        response.data.forEach(workout => {
-        // Current choice is to always overwrite local info with DB info if conflict exists. 
-        // This may not be wise later on. 
-          stored_workouts[workout["date"]] = workout["payload"];
-        });
-        this.setState({workouts: stored_workouts});
-      }
-    });
+      .then(response => {
+        if (response) {
+          response.data.forEach(workout => {
+          // Current choice is to always overwrite local info with DB info if conflict exists. 
+          // This may not be wise later on. 
+            stored_workouts[workout.date] = workout.payload;
+          });
+          this.setState({workouts: stored_workouts});
+        }
+      });
   }
   
   updateDayContent(date, content) {
     // TODO this is mock implementation, to test the state updating methods down to daycellContent level
     const workouts = this.state.workouts;
-    workouts[date] = content;
+    workouts.date = content;
     this.setState(
       {workouts: workouts}
     )
@@ -156,7 +172,7 @@ class MainPanel extends React.Component {
       content = 
         <div>
           <CountdownView 
-            deadline={this.state.countdownDeadline}
+            deadline={this.state.countdownConfig.deadline}
             workouts={this.state.workouts}
             updateDayContentFunc={(date, content) => this.updateDayContent(date, content)}
           />
@@ -183,7 +199,7 @@ class CountdownView extends React.Component {
     const deadlineObj = moment(deadline); // param deadline is a string, turning it into a moment object here
     const daysUntilDeadline = Math.ceil(moment.duration(deadlineObj.diff(moment())).asDays()) + 1 + startingDayOfWeek;
     // Pad the end of array if the deadline date is not the end of the week (as displayed);
-    const fullArrayLength = daysUntilDeadline + (daysUntilDeadline % 7 == 0 ? 0 : 7 - daysUntilDeadline % 7); 
+    const fullArrayLength = daysUntilDeadline + (daysUntilDeadline % 7 === 0 ? 0 : 7 - daysUntilDeadline % 7); 
     const dayArray = Array(fullArrayLength).fill(null);
 
     const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.
@@ -238,7 +254,7 @@ class Calendar extends React.Component {
     const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const date = currentDay.format(serverDateFormat);
-      const workoutDetails = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : {};
+      const workoutDetails = typeof this.props.workouts.date !== 'undefined' ? this.props.workouts.date : {};
       dayArray.splice(i, 1, {
         date: date,
         workoutDetails: workoutDetails,
@@ -304,11 +320,6 @@ class CalendarMonthControl extends React.Component {
 }
 
 class WeekDisplay extends React.Component {
-  constructor(props) {
-    super(props);
-
-  }
-
   render() {
     const days = this.props.days.slice()
     const dayCells = days.map((value, index) => {
@@ -359,7 +370,7 @@ class DayCell extends React.Component {
     if (!this.props.date) {
       return null;
     }
-    return moment(this.props.date).format("M/DD/YY");
+    return moment(this.props.date, serverDateFormat).format("M/DD/YY");
   }
 
   render() {
