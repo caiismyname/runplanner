@@ -75,14 +75,22 @@ runplannerRoutes.route("/updateuser/:id").post(function(req, res) {
 //
 //
 
-runplannerRoutes.route("/addworkout").post(function(req, res) {
-    let workout = new Workouts(req.body);
+runplannerRoutes.route("/addworkouts").post(function(req, res) {
+    req.body.toAdd.forEach(w => {
+        // TODO Validate that workout owner exists
+        let workout = new Workouts(w);
 
-    // TODO Validate that workout owner exists
-
-    workout.save()
-        .then(workout => {res.status(200).json("Workout added successfully")})
-        .catch(err => {res.status(400).send("Adding new workout failed")});
+        workout.save(function(err, w) {
+            if (err) {
+                res.status(400).send("Adding new workout failed");
+            } else {
+                res.status(200).json({
+                    "message": "Workout added successfully", 
+                    "id": w._id,
+                });
+            }
+        });
+    })
 });
 
 // TODO I don't think POSTs should have the :id in the url but idk
@@ -98,23 +106,27 @@ runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
     });
 });
 
-runplannerRoutes.route("/updateworkout/:id").post(function(req, res) {
-    Workouts.findById(req.params.id, function(err, workout) {
-        if (!workout) {
-            res.status(404).send("Workout not found");
-        } else {
-            workout.owner = req.body.owner;
-            workout.date = req.body.date;
-            workout.payload = {
-                "type": req.body.type,
-                "content": req.body.content,
+runplannerRoutes.route("/updateworkouts").post(function(req, res) {
+    // TODO change to foreach
+    console.log("server " + req.body.toUpdate);
+    Object.keys(req.body.toUpdate).forEach((key,idx) => {
+        
+        let workoutToUpdate = req.body.toUpdate[key];
+        console.log("server updating " + workoutToUpdate);
+        Workouts.findById(workoutToUpdate.id, function(err, workout) {
+            if (!workout) {
+                res.status(404).send("Workout not found");
+            } else {
+                workout.owner = workoutToUpdate.owner;
+                workout.date = workoutToUpdate.date;
+                workout.payload = workoutToUpdate.payload;
+    
+                workout.save()
+                    .then(workout => {res.json("Workout updated")})
+                    .catch(err => {res.status(400).send("Workout update failed")});
             }
-
-            workout.save()
-                .then(workout => {res.json("Workout updated")})
-                .catch(err => {res.status(400).send("Workout update failed")});
-        }
-    })
+        });
+    });
 });
 
 //
@@ -138,10 +150,6 @@ runplannerRoutes.route("/getuser/:id").get(function(req, res){
         }
     });
 })
-
-// runplannerRoutes.route("/getworkoutsforowner:id").get(function(req, res) {
-
-// })
 
 runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req, res) {
     Workouts.findOne(
@@ -175,8 +183,9 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
             } else {
                 let timeFormattedItems = items.map(workout => { 
                     return {  
-                        "payload": workout["payload"],
-                        "date": moment(workout["date"]).format(serverDateFormat),
+                        "payload": workout.payload,
+                        "date": moment(workout.date).format(serverDateFormat),
+                        "id": workout._id,
                     }
                 });
                 res.json(timeFormattedItems);
