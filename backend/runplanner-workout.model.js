@@ -6,9 +6,6 @@ let Workout = new Schema({
         type: String,
         required: [true, "Workouts must have owners"]
     },
-    date: {
-        type: Date,
-    },
     payload: {
         type: {
             type: String,

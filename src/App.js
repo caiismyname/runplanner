@@ -82,13 +82,13 @@ class WorkoutHandler {
   addWorkout(payload, callback) {
     // TODO should ignore changes that net 0
     const date = payload.date;
+    const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
     this.workouts[date] = { // since no ID yet, use date as a temp ID until sync to db
       payload: payload,
-      date: date,
     };
 
-    this.dates[date] = date;
-    this.newWorkouts.push(date);
+    this.dates[date] = tempId; 
+    this.newWorkouts.push(tempId);
   }
 
   syncToDB(callback) {
@@ -104,7 +104,6 @@ class WorkoutHandler {
     let workoutsToAdd = newWorkouts.map(x => {
       return {
         owner: this.ownerID,
-        date: this.workouts[x].payload.date,
         payload: this.workouts[x].payload,
       }
     });
@@ -143,10 +142,9 @@ class WorkoutHandler {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
             this.workouts[workout.id] = {
               payload: workout.payload,
-              date: workout.date,
             }
 
-            this.dates[workout.date] = workout.id;
+            this.dates[workout.payload.date] = workout.id;
           });
           callback(this.generateDisplayWorkouts());
         }

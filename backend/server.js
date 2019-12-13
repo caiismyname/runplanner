@@ -80,14 +80,14 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
     req.body.toAdd.forEach(w => {
         // TODO Validate that workout owner exists
         let workout = new Workouts(w);
-        console.log("adding new workout " + w.date);
+        console.log("adding new workout ");
 
         workout.save(function(err, workout) {
             if (err) {
                 res.status(400).send("Adding new workout failed");
             } else {
                 newIds[w.date] = workout._id;
-                
+
                 res.status(200).json({
                     "message": "Workout added successfully", 
                     "id": workout._id,
@@ -113,18 +113,15 @@ runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
 
 runplannerRoutes.route("/updateworkouts").post(function(req, res) {
     // TODO change to foreach
-    console.log("server " + req.body.toUpdate);
     Object.keys(req.body.toUpdate).forEach((key,idx) => {
         
         let workoutToUpdate = req.body.toUpdate[key];
-        console.log("server updating " + workoutToUpdate);
         Workouts.findById(workoutToUpdate.id, function(err, workout) {
             if (!workout) {
                 res.status(404).send("Workout not found");
             } else {
-                workout.owner = workoutToUpdate.owner;
-                workout.date = workoutToUpdate.date;
                 workout.payload = workoutToUpdate.payload;
+                workout.owner = workoutToUpdate.owner;
     
                 workout.save()
                     .then(workout => {res.json("Workout updated")})
@@ -179,8 +176,8 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
     // console.log(new Date(req.params.ltedate));
     Workouts.find(
         { 
-            date: { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
-            owner: req.params.id
+            "payload.date": { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
+            "owner": req.params.id
         },
         (err, items) => {
             if (err) {
@@ -190,12 +187,9 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
                     // TODO I've written this converstion too many times. gotta funcitonize it.
                     const timeFormattedPayload = JSON.parse(JSON.stringify(workout.payload)); // deep copy. remember, avoid mutating/reassigning params
                     timeFormattedPayload.date = moment(workout.payload.date).format(serverDateFormat);
-                    console.log("pre stringifying date to return in getworkotus: " + workout.payload.date);
-                    console.log("stringifying date to return in getworkotus: " + timeFormattedPayload.date);
 
                     return {  
                         "payload": timeFormattedPayload,
-                        "date": moment(workout.date).format(serverDateFormat),
                         "id": workout._id,
                     }
                 });
