@@ -53,21 +53,137 @@ class MonthHandler {
   }
 }
 
+class WorkoutHandler {
+  constructor(ownerID = "") {
+    this.ownerID = ownerID;
+    this.workouts = {}; // Key = MongoID, Value = workout details
+    this.dates = {}; // Key = date, Value = MongID (to use as reference into above dict)
+    this.modified = [];
+    this.newWorkouts = [];
+  }
+
+  setOwnerID(id) {
+    this.ownerID = id;
+  }
+
+  // no date changes for now TODO add date changes
+  updateWorkout(id, payload, callback) {
+    if (id !== null) {
+      this.workouts[id].payload = payload;
+      this.modified.push(id);
+      callback(this.generateDisplayWorkouts());
+    } else { // For new workouts, there is no id
+        this.addWorkout(payload, callback);
+    }
+    
+  }
+
+  addWorkout(payload) {
+    const date = payload.date;
+    const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
+    
+    if (tempId in this.workouts) {
+      const old = this.workouts[tempId].payload;
+      const mergedPayload = {};
+      Object.keys(payload).forEach(k => {
+        mergedPayload[k] = payload[k] === undefined ? old[k] : payload[k];
+      })
+      this.workouts[tempId] = {payload: mergedPayload};
+    } else {
+      this.workouts[tempId] = {payload: payload};
+    }
+    
+    this.dates[date] = tempId; 
+    this.newWorkouts.push(tempId);
+  }
+
+  syncToDB(callback) {
+    const modified = [... new Set(this.modified)]; // Dedup the list
+    const newWorkouts = [... new Set(this.newWorkouts)]; // Dedup the list
+    let workoutsToUpdate = modified.map(x => {
+      let res = JSON.parse(JSON.stringify(this.workouts[x]));
+      res.id = x;
+      res.owner = this.ownerID;
+      return res;
+    });
+    let workoutsToAdd = newWorkouts.map(x => {
+      return {
+        owner: this.ownerID,
+        payload: this.workouts[x].payload,
+      }
+    });
+    
+    if (workoutsToUpdate.length > 0) {
+      axios.post(dbAddress + "updateworkouts", {"toUpdate": workoutsToUpdate})
+        .then(res => {
+          console.log(res.data);
+          this.modified = [];
+          callback(this.generateDisplayWorkouts());
+        });
+    }
+   
+    if (workoutsToAdd.length > 0) {
+      axios.post(dbAddress + "addworkouts", {"toAdd": workoutsToAdd})
+      .then(res => {
+        console.log(res.data);
+        this.newWorkouts = [];
+        callback(this.generateDisplayWorkouts());
+      });
+    }
+  }
+
+  pullWorkoutsFromDB(startDate, endDate, callback) {
+    axios.get(dbAddress + "getworkoutsforownerfordaterange/" 
+      + this.ownerID + "/" 
+      + startDate + "/"
+      + endDate)
+      .then(response => {
+        if (response) {
+          response.data.forEach(workout => {
+          // Current choice is to always overwrite local info with DB info if conflict exists. 
+            this.workouts[workout.id] = {
+              payload: workout.payload,
+            }
+            
+            const formattedDate = moment(workout.payload.date).format(serverDateFormat);
+            this.dates[formattedDate] = workout.id;
+          });
+          callback(this.generateDisplayWorkouts());
+        }
+      });
+  }
+
+  generateDisplayWorkouts(startDate, endDate) {
+    let res = {};
+    Object.keys(this.dates).forEach((key,idx) => {
+      res[key] = {
+        payload: this.workouts[this.dates[key]].payload,
+        id: this.dates[key],
+      }
+    });
+
+    return res;
+  }
+
+}
+
 class MainPanel extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
       currentMonth: new MonthHandler(),
+      workoutHandler: new WorkoutHandler(),
+      workouts: {},
       ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
       name: "",
-      isCalendarMode: false,
-      workouts: {},
+      isCalendarMode: false, // TODO reconcile this with the DB format (enum)
       countdownConfig: {},
     }
   }
 
   componentDidMount() {
+    this.state.workoutHandler.setOwnerID(this.state.ownerID);
     this.populateUser(this.populateWorkouts.bind(this));
   }
 
@@ -98,10 +214,8 @@ class MainPanel extends React.Component {
   }
 
   populateWorkouts() {
-    const stored_workouts = this.state.workouts;
     let startDate;
     let endDate;
-
     if (this.state.isCalendarMode) {
       startDate = this.state.currentMonth.getMonthStart();
       endDate = this.state.currentMonth.getMonthEnd()
@@ -110,29 +224,16 @@ class MainPanel extends React.Component {
       endDate = this.state.countdownConfig.deadline;
     }
 
-    axios.get(dbAddress + "getworkoutsforownerfordaterange/" 
-      + this.state.ownerID + "/" 
-      + startDate + "/"
-      + endDate)
-      .then(response => {
-        if (response) {
-          response.data.forEach(workout => {
-          // Current choice is to always overwrite local info with DB info if conflict exists. 
-          // This may not be wise later on. 
-            stored_workouts[workout.date] = workout.payload;
-          });
-          this.setState({workouts: stored_workouts});
-        }
-      });
+    this.state.workoutHandler.pullWorkoutsFromDB(startDate, endDate, (workouts) => this.setState({workouts: workouts}));
   }
   
-  updateDayContent(date, content) {
-    // TODO this is mock implementation, to test the state updating methods down to daycellContent level
-    const workouts = this.state.workouts;
-    workouts.date = content;
-    this.setState(
-      {workouts: workouts}
-    )
+  updateDayContent(id, payload) {
+    this.state.workoutHandler.updateWorkout(id, payload, workouts => this.setState({workouts: workouts}));
+  }
+
+  updateDB() {
+    console.log('svae button pressed');
+    this.state.workoutHandler.syncToDB(workouts => this.setState({workouts: workouts}));
   }
 
   generateHeaderDayLabels() {
@@ -165,7 +266,7 @@ class MainPanel extends React.Component {
             decrementMonthHandler={() => this.decrementMonth()}
             incrementMonthHandler={() => this.incrementMonth()}  
             workouts={this.state.workouts}
-            updateDayContentFunc={(date, content) => this.updateDayContent(date, content)}
+            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
           />
         </div>;
     } else {
@@ -174,17 +275,19 @@ class MainPanel extends React.Component {
           <CountdownView 
             deadline={this.state.countdownConfig.deadline}
             workouts={this.state.workouts}
-            updateDayContentFunc={(date, content) => this.updateDayContent(date, content)}
+            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
           />
         </div>;
     }
 
     return (
       <div>
+        <h1>{"Hi " + this.state.name + "!"}</h1>
         <button onClick={() => this.switchDisplayModes()}>{"Switch to " + alternateDisplayMode + " mode"}</button>
         <div className="dayLabels">
           {this.generateHeaderDayLabels()}
         </div>
+        <button onClick={() => this.updateDB()}><h2>Save</h2></button>
         {content}
       </div>
     );
@@ -205,12 +308,14 @@ class CountdownView extends React.Component {
     const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.
     for (let i = startingDayOfWeek; i < daysUntilDeadline; i++) {
       const date = currentDay.format(serverDateFormat);
-      const workoutDetails = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : {};
+      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : {};
+      const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
       currentDay.add(1, "day");
 
       dayArray.splice(i, 1, {
         date: date,
-        workoutDetails: workoutDetails,
+        payload: payload,
+        id: id,
       });
     }
 
@@ -229,7 +334,7 @@ class CountdownView extends React.Component {
     const weekElements = weeks.map((value, index) => {
       return (
         <div key={index.toString()}>
-          <WeekDisplay days={value} updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}/>
+          <WeekDisplay days={value} updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}/>
         </div>
       );
     });
@@ -254,10 +359,12 @@ class Calendar extends React.Component {
     const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const date = currentDay.format(serverDateFormat);
-      const workoutDetails = typeof this.props.workouts.date !== 'undefined' ? this.props.workouts.date : {};
+      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : {};
+      const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
       dayArray.splice(i, 1, {
         date: date,
-        workoutDetails: workoutDetails,
+        payload: payload,
+        id: id,
       });
 
       currentDay.add(1, "day");
@@ -284,7 +391,7 @@ class Calendar extends React.Component {
     const weekElements = weeks.map((value, index) => {
       return (
         <div key={index.toString()}>
-          <WeekDisplay days={value} updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}/>
+          <WeekDisplay days={value} updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}/>
         </div>
       );
     });
@@ -327,7 +434,8 @@ class WeekDisplay extends React.Component {
         <div className="dayCell" key={index}>
           <DayCell 
             date={value ? value.date : null}
-            workoutDetails={value ? value.workoutDetails : {}} // apparently reading properties from an empty object doesn't fail?
+            payload={value ? value.payload : {}} // apparently reading properties from an empty object doesn't fail?
+            id={value ? value.id : null}
             updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
           />
         </div>
@@ -349,43 +457,55 @@ class DayCell extends React.Component {
     this.handleWorkoutContentChange = this.handleWorkoutContentChange.bind(this);
     this.handleWorkoutTypeChange = this.handleWorkoutTypeChange.bind(this);
   }
+
+  timeSetter(timeString) {
+    // TODO I have no idea how to address timezones. THis is a problem for later.
+    let time = moment(timeString);
+    time.hour(8);
+    time.minute(0);
+    return time;
+  }
   
   handleWorkoutContentChange(event) {
-    const newContent = {
-      type: this.props.workoutDetails.type,
+    const newPayload = {
+      type: this.props.payload.type,
       content: event.target.value,
+      date: this.props.id === null ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
     }
-    this.props.updateDayContentFunc(this.props.date, newContent);
+    this.props.updateDayContentFunc(this.props.id, newPayload);
   }
 
   handleWorkoutTypeChange(event) {
-    const newContent = {
+    const newPayload = {
       type: event.target.value,
-      content: this.props.workoutDetails.content,
+      content: this.props.payload.content,
+      date: this.props.id === null ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
     }
-    this.props.updateDayContentFunc(this.props.date, newContent);
+    this.props.updateDayContentFunc(this.props.id, newPayload);
   }
 
   generateDisplayDate() {
     if (!this.props.date) {
       return null;
     }
+    // The serverDateFormat is not ISO standard, so specifying the formatting to moment to silence warnings
     return moment(this.props.date, serverDateFormat).format("M/DD/YY");
   }
 
   render() {
     let contentField;
-    if (this.props.workoutDetails.content) {
-      contentField = <textarea value={this.props.workoutDetails.content} onChange={this.handleWorkoutContentChange}/>;
-    } else {
-      // Prevents displaying an empty text box on empty days
-      contentField = null;
-    }
+    // if (this.props.payload.content) {
+    //   contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
+    // } else {
+    //   // Prevents displaying an empty text box on empty days
+    //   contentField = null;
+    // }
+    contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
 
     return (
       <div>
         <h2>{this.generateDisplayDate()}</h2>
-        <textarea value={this.props.workoutDetails.type} onChange={this.handleWorkoutTypeChange}/> {/* don't forget to style this lol*/}
+        <textarea value={this.props.payload.type} onChange={this.handleWorkoutTypeChange}/> {/* don't forget to style this lol*/}
         {contentField}
       </div>
     );
