@@ -69,12 +69,19 @@ class WorkoutHandler {
   // no date changes for now TODO add date changes
   updateWorkout(id, payload, callback) {
     console.log(id);
-    this.workouts[id].payload = payload;
-    this.modified.push(id);
-    callback(this.generateDisplayWorkouts());
+    if (id !== null) {
+      this.workouts[id].payload = payload;
+      this.modified.push(id);
+      callback(this.generateDisplayWorkouts());
+    } else { // For new workouts, there is no id
+        this.addWorkout(payload, callback);
+    }
+    
   }
 
-  addWorkout(date, payload) {
+  addWorkout(payload, callback) {
+    // TODO should ignore changes that net 0
+    const date = payload.date;
     this.workouts[date] = { // since no ID yet, use date as a temp ID until sync to db
       payload: payload,
       date: date,
@@ -87,16 +94,17 @@ class WorkoutHandler {
   syncToDB(callback) {
     console.log("db sync");
     const modified = [... new Set(this.modified)]; // Dedup the list
+    const newWorkouts = [... new Set(this.newWorkouts)]; // Dedup the list
     let workoutsToUpdate = modified.map(x => {
       let res = JSON.parse(JSON.stringify(this.workouts[x]));
       res.id = x;
       res.owner = this.ownerID;
       return res;
     });
-    let workoutsToAdd = this.newWorkouts.map(x => {
+    let workoutsToAdd = newWorkouts.map(x => {
       return {
         owner: this.ownerID,
-        date: this.workouts[x].date,
+        date: this.workouts[x].payload.date,
         payload: this.workouts[x].payload,
       }
     });
@@ -115,7 +123,7 @@ class WorkoutHandler {
     }
    
     if (workoutsToAdd.length > 0) {
-      axios.post(dbAddress + "addworkout", workoutsToAdd)
+      axios.post(dbAddress + "addworkouts", {"toAdd": workoutsToAdd})
       .then(res => {
         console.log(res.data);
         this.newWorkouts = [];
@@ -220,13 +228,6 @@ class MainPanel extends React.Component {
   }
   
   updateDayContent(id, payload) {
-    // const workouts = this.state.workouts;
-    // workouts[date] = content;
-    // workouts[date].modified = true;
-    // this.setState(
-    //   {workouts: workouts}
-    // )
-
     this.state.workoutHandler.updateWorkout(id, payload, workouts => this.setState({workouts: workouts}));
   }
 
@@ -456,21 +457,31 @@ class DayCell extends React.Component {
     this.handleWorkoutContentChange = this.handleWorkoutContentChange.bind(this);
     this.handleWorkoutTypeChange = this.handleWorkoutTypeChange.bind(this);
   }
+
+  timeSetter(timeString) {
+    // TODO I have no idea how to address timezones. THis is a problem for later.
+    let time = moment(timeString);
+    time.hour(8);
+    time.minute(0);
+    return time;
+  }
   
   handleWorkoutContentChange(event) {
-    const newContent = {
+    const newPayload = {
       type: this.props.payload.type,
       content: event.target.value,
+      date: this.props.id === null ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
     }
-    this.props.updateDayContentFunc(this.props.id, newContent);
+    this.props.updateDayContentFunc(this.props.id, newPayload);
   }
 
   handleWorkoutTypeChange(event) {
-    const newContent = {
+    const newPayload = {
       type: event.target.value,
       content: this.props.payload.content,
+      date: this.props.id === null ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
     }
-    this.props.updateDayContentFunc(this.props.id, newContent);
+    this.props.updateDayContentFunc(this.props.id, newPayload);
   }
 
   generateDisplayDate() {
@@ -483,12 +494,13 @@ class DayCell extends React.Component {
 
   render() {
     let contentField;
-    if (this.props.payload.content) {
-      contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
-    } else {
-      // Prevents displaying an empty text box on empty days
-      contentField = null;
-    }
+    // if (this.props.payload.content) {
+    //   contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
+    // } else {
+    //   // Prevents displaying an empty text box on empty days
+    //   contentField = null;
+    // }
+    contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
 
     return (
       <div>

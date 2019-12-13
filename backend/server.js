@@ -76,17 +76,22 @@ runplannerRoutes.route("/updateuser/:id").post(function(req, res) {
 //
 
 runplannerRoutes.route("/addworkouts").post(function(req, res) {
+    let newIds = {};
     req.body.toAdd.forEach(w => {
         // TODO Validate that workout owner exists
         let workout = new Workouts(w);
+        console.log("adding new workout " + w.date);
 
-        workout.save(function(err, w) {
+        workout.save(function(err, workout) {
             if (err) {
                 res.status(400).send("Adding new workout failed");
             } else {
+                newIds[w.date] = workout._id;
+                
                 res.status(200).json({
                     "message": "Workout added successfully", 
-                    "id": w._id,
+                    "id": workout._id,
+                    "workout": workout,
                 });
             }
         });
@@ -182,8 +187,14 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
                 console.log(err);
             } else {
                 let timeFormattedItems = items.map(workout => { 
+                    // TODO I've written this converstion too many times. gotta funcitonize it.
+                    const timeFormattedPayload = JSON.parse(JSON.stringify(workout.payload)); // deep copy. remember, avoid mutating/reassigning params
+                    timeFormattedPayload.date = moment(workout.payload.date).format(serverDateFormat);
+                    console.log("pre stringifying date to return in getworkotus: " + workout.payload.date);
+                    console.log("stringifying date to return in getworkotus: " + timeFormattedPayload.date);
+
                     return {  
-                        "payload": workout.payload,
+                        "payload": timeFormattedPayload,
                         "date": moment(workout.date).format(serverDateFormat),
                         "id": workout._id,
                     }

@@ -16,7 +16,10 @@ let Workout = new Schema({
         },
         content: {
             type: String,
-        }
+        },
+        date: {
+            type: Date,
+        },
     }
 });
 
