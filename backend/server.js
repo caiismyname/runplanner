@@ -112,9 +112,7 @@ runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
 });
 
 runplannerRoutes.route("/updateworkouts").post(function(req, res) {
-    // TODO change to foreach
     Object.keys(req.body.toUpdate).forEach((key,idx) => {
-        
         let workoutToUpdate = req.body.toUpdate[key];
         Workouts.findById(workoutToUpdate.id, function(err, workout) {
             if (!workout) {
@@ -145,9 +143,7 @@ runplannerRoutes.route("/getuser/:id").get(function(req, res){
             if (!item) {
                 res.status(404).send("User not found");
             } else {
-                const timeFormattedItem = JSON.parse(JSON.stringify(item)); // deep copy. remember, avoid mutating/reassigning params
-                timeFormattedItem.countdownConfig.deadline = moment(item.countdownConfig.deadline).format(serverDateFormat);
-                res.json(timeFormattedItem);
+                res.json(item);
             }
         }
     });
@@ -172,8 +168,6 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
 });
 
 runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
-    // console.log(new Date(req.params.gtedate));
-    // console.log(new Date(req.params.ltedate));
     Workouts.find(
         { 
             "payload.date": { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
@@ -184,12 +178,8 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
                 console.log(err);
             } else {
                 let timeFormattedItems = items.map(workout => { 
-                    // TODO I've written this converstion too many times. gotta funcitonize it.
-                    const timeFormattedPayload = JSON.parse(JSON.stringify(workout.payload)); // deep copy. remember, avoid mutating/reassigning params
-                    timeFormattedPayload.date = moment(workout.payload.date).format(serverDateFormat);
-
                     return {  
-                        "payload": timeFormattedPayload,
+                        "payload": workout.payload,
                         "id": workout._id,
                     }
                 });

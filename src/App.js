@@ -143,8 +143,9 @@ class WorkoutHandler {
             this.workouts[workout.id] = {
               payload: workout.payload,
             }
-
-            this.dates[workout.payload.date] = workout.id;
+            
+            const formattedDate = moment(workout.payload.date).format(serverDateFormat);
+            this.dates[formattedDate] = workout.id;
           });
           callback(this.generateDisplayWorkouts());
         }
