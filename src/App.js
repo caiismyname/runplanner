@@ -68,7 +68,6 @@ class WorkoutHandler {
 
   // no date changes for now TODO add date changes
   updateWorkout(id, payload, callback) {
-    console.log(id);
     if (id !== null) {
       this.workouts[id].payload = payload;
       this.modified.push(id);
@@ -79,20 +78,27 @@ class WorkoutHandler {
     
   }
 
-  addWorkout(payload, callback) {
+  addWorkout(payload) {
     // TODO should ignore changes that net 0
     const date = payload.date;
     const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
-    this.workouts[date] = { // since no ID yet, use date as a temp ID until sync to db
-      payload: payload,
-    };
-
+    
+    if (tempId in this.workouts) {
+      const old = this.workouts[tempId].payload;
+      const mergedPayload = {};
+      Object.keys(payload).forEach(k => {
+        mergedPayload[k] = payload[k] === undefined ? old[k] : payload[k];
+      })
+      this.workouts[tempId] = {payload: mergedPayload};
+    } else {
+      this.workouts[tempId] = {payload: payload};
+    }
+    
     this.dates[date] = tempId; 
     this.newWorkouts.push(tempId);
   }
 
   syncToDB(callback) {
-    console.log("db sync");
     const modified = [... new Set(this.modified)]; // Dedup the list
     const newWorkouts = [... new Set(this.newWorkouts)]; // Dedup the list
     let workoutsToUpdate = modified.map(x => {
@@ -108,11 +114,7 @@ class WorkoutHandler {
       }
     });
     
-    console.log(workoutsToUpdate);
-    console.log(workoutsToAdd);
-    
     if (workoutsToUpdate.length > 0) {
-      console.log('posting update');
       axios.post(dbAddress + "updateworkouts", {"toUpdate": workoutsToUpdate})
         .then(res => {
           console.log(res.data);
