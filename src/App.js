@@ -78,7 +78,7 @@ class WorkoutHandler {
     
   }
 
-  addWorkout(payload) {
+  addWorkout(payload, callback) {
     const date = payload.date;
     const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
     
@@ -95,6 +95,8 @@ class WorkoutHandler {
     
     this.dates[date] = tempId; 
     this.newWorkouts.push(tempId);
+
+    callback(this.generateDisplayWorkouts());
   }
 
   syncToDB(callback) {
@@ -153,7 +155,7 @@ class WorkoutHandler {
       });
   }
 
-  generateDisplayWorkouts(startDate, endDate) {
+  generateDisplayWorkouts() {
     let res = {};
     Object.keys(this.dates).forEach((key,idx) => {
       res[key] = {
@@ -228,11 +230,12 @@ class MainPanel extends React.Component {
   }
   
   updateDayContent(id, payload) {
-    this.state.workoutHandler.updateWorkout(id, payload, workouts => this.setState({workouts: workouts}));
+    this.state.workoutHandler.updateWorkout(id, payload, workouts => {
+      this.setState({workouts: workouts});
+    });
   }
 
   updateDB() {
-    console.log('svae button pressed');
     this.state.workoutHandler.syncToDB(workouts => this.setState({workouts: workouts}));
   }
 

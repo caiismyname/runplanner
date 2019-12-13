@@ -15,6 +15,11 @@ app.use(bodyParser.json());
 
 let serverDateFormat = "YYYY-MM-D";
 
+function proceedIfUserExists(id, successCallback, failureCallback) {
+    Users.findOne({ _id: id }).select("_id").lean().then(result => {
+        result ? successCallback() : failureCallback();
+    }).catch(e => failureCallback());
+}
 
 mongoose.connect(
     "mongodb://127.0.0.1:27017/runplanner", 
@@ -41,16 +46,14 @@ runplannerRoutes.route("/adduser").post(function(req, res) {
 });
 
 runplannerRoutes.route("/deleteuser/:id").post(function(req, res) {
-    // TODO: replace this with a function to check for existence that doesn't return the entire object
-    Users.findById(req.params.id, function(err, user) {
-        if (!user) {
-            res.status(404).send("User not found");
-        } else {
+    proceedIfUserExists(req.params.id,
+        () => {
             Users.deleteOne({_id: req.params.id})
                 .then(res.status(200).json("User deleted successfully"))
                 .catch(err => {res.status(400).send("Deleting user failed")});
-        }
-    });
+        }, 
+        () => {res.status(404).send("User not found");}
+    );
 })
 
 runplannerRoutes.route("/updateuser/:id").post(function(req, res) {
@@ -78,27 +81,26 @@ runplannerRoutes.route("/updateuser/:id").post(function(req, res) {
 runplannerRoutes.route("/addworkouts").post(function(req, res) {
     let newIds = {};
     req.body.toAdd.forEach(w => {
-        // TODO Validate that workout owner exists
-        let workout = new Workouts(w);
-        console.log("adding new workout ");
-
-        workout.save(function(err, workout) {
-            if (err) {
-                res.status(400).send("Adding new workout failed");
-            } else {
-                newIds[w.date] = workout._id;
-
-                res.status(200).json({
-                    "message": "Workout added successfully", 
-                    "id": workout._id,
-                    "workout": workout,
+        proceedIfUserExists(w.owner, 
+            () => {
+                let workout = new Workouts(w);
+                workout.save(function(err, workout) {
+                    if (err) {
+                        res.status(400).send("Adding new workout failed");
+                    } else {
+                        newIds[w.date] = workout._id;
+                        res.status(200).json({
+                            "message": "Workout added successfully", 
+                            "id": workout._id,
+                        });
+                    }
                 });
-            }
-        });
+            },
+            () => {res.status(400).send("Adding new workout failed: the user does not exist");}
+        );
     })
 });
 
-// TODO I don't think POSTs should have the :id in the url but idk
 runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
     Workouts.findById(req.params.id, function(err, workout) {
         if (!workout) {
