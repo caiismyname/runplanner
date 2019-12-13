@@ -59,7 +59,7 @@ class WorkoutHandler {
     this.workouts = {}; // Key = MongoID, Value = workout details
     this.dates = {}; // Key = date, Value = MongID (to use as reference into above dict)
     this.modified = [];
-    this.newWorkouts = []; // TODO what if you modify a newly added workout before sync?
+    this.newWorkouts = [];
   }
 
   setOwnerID(id) {
@@ -79,7 +79,6 @@ class WorkoutHandler {
   }
 
   addWorkout(payload) {
-    // TODO should ignore changes that net 0
     const date = payload.date;
     const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
     
