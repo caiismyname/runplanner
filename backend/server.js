@@ -5,7 +5,6 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const runplannerRoutes = express.Router();
 const PORT = 4000;
-const moment = require("moment");
 
 let Workouts = require("./runplanner-workout.model");
 let Users = require("./runplanner-user.model");
@@ -13,7 +12,7 @@ let Users = require("./runplanner-user.model");
 app.use(cors());
 app.use(bodyParser.json());
 
-let serverDateFormat = "YYYY-MM-D";
+let serverDateFormat = "YYYY-MM-DD";
 
 function proceedIfUserExists(id, successCallback, failureCallback) {
     Users.findOne({ _id: id }).select("_id").lean().then(result => {

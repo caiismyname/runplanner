@@ -4,7 +4,7 @@ import moment from 'moment';
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
 
-let serverDateFormat = "YYYY-MM-D";
+let serverDateFormat = "YYYY-MM-DD";
 let dbAddress = "http://localhost:4000/runplannerDB/";
 
 class MonthHandler {
@@ -68,26 +68,25 @@ class WorkoutHandler {
 
   // no date changes for now TODO add date changes
   updateWorkout(id, payload, callback) {
-    if (id !== null) {
+    if (id !== "" && !(this.newWorkouts.includes(id))) {
       this.workouts[id].payload = payload;
       this.modified.push(id);
       callback(this.generateDisplayWorkouts());
     } else { // For new workouts, there is no id
         this.addWorkout(payload, callback);
     }
-    
   }
 
   addWorkout(payload, callback) {
-    const date = payload.date;
+    const date = moment(payload.date).format(serverDateFormat);
     const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
-    
+
     if (tempId in this.workouts) {
       const old = this.workouts[tempId].payload;
       const mergedPayload = {};
       Object.keys(payload).forEach(k => {
-        mergedPayload[k] = payload[k] === undefined ? old[k] : payload[k];
-      })
+        mergedPayload[k] = payload[k] === "" ? old[k] : payload[k];
+      });
       this.workouts[tempId] = {payload: mergedPayload};
     } else {
       this.workouts[tempId] = {payload: payload};
@@ -100,8 +99,8 @@ class WorkoutHandler {
   }
 
   syncToDB(callback) {
-    const modified = [... new Set(this.modified)]; // Dedup the list
-    const newWorkouts = [... new Set(this.newWorkouts)]; // Dedup the list
+    const modified = [...new Set(this.modified)]; // Dedup the list
+    const newWorkouts = [...new Set(this.newWorkouts)]; // Dedup the list
     let workoutsToUpdate = modified.map(x => {
       let res = JSON.parse(JSON.stringify(this.workouts[x]));
       res.id = x;
@@ -132,6 +131,8 @@ class WorkoutHandler {
         callback(this.generateDisplayWorkouts());
       });
     }
+
+    //TODO this should then repull from DB to keep db and FE in sync
   }
 
   pullWorkoutsFromDB(startDate, endDate, callback) {
@@ -190,11 +191,11 @@ class MainPanel extends React.Component {
   }
 
   decrementMonth() {
-    this.setState({currentMonth: this.state.currentMonth.decrementMonth()});
+    this.setState({currentMonth: this.state.currentMonth.decrementMonth()}, () => {this.populateWorkouts()});
   }
 
   incrementMonth() {
-    this.setState({currentMonth: this.state.currentMonth.incrementMonth()});
+    this.setState({currentMonth: this.state.currentMonth.incrementMonth()}, () => {this.populateWorkouts()});
   } 
 
   switchDisplayModes() {
@@ -311,7 +312,7 @@ class CountdownView extends React.Component {
     const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.
     for (let i = startingDayOfWeek; i < daysUntilDeadline; i++) {
       const date = currentDay.format(serverDateFormat);
-      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : {};
+      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : null;
       const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
       currentDay.add(1, "day");
 
@@ -362,7 +363,7 @@ class Calendar extends React.Component {
     const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const date = currentDay.format(serverDateFormat);
-      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : {};
+      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : null;
       const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
       dayArray.splice(i, 1, {
         date: date,
@@ -433,12 +434,19 @@ class WeekDisplay extends React.Component {
   render() {
     const days = this.props.days.slice()
     const dayCells = days.map((value, index) => {
+      if (!value) {
+        // Still have to return a div to keep flexbox spacing correct for the whole week.
+        return <div className="dayCell" key={index}></div>;
+      }
       return (
         <div className="dayCell" key={index}>
           <DayCell 
-            date={value ? value.date : null}
-            payload={value ? value.payload : {}} // apparently reading properties from an empty object doesn't fail?
-            id={value ? value.id : null}
+            // From the react gods on github: 
+            // An input should be either uncontrolled (value always undef/null) or controlled (value is a string, so it should be an empty string rather than null) for its entire lifetime.
+            // This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
+            date={value ? value.date : ""}
+            payload={value.payload ? value.payload : {"content": "", "type": "", "date": ""}} 
+            id={value.id ? value.id : ""}
             updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
           />
         </div>
@@ -473,7 +481,7 @@ class DayCell extends React.Component {
     const newPayload = {
       type: this.props.payload.type,
       content: event.target.value,
-      date: this.props.id === null ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
+      date: this.props.id === "" ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
     }
     this.props.updateDayContentFunc(this.props.id, newPayload);
   }
@@ -482,13 +490,14 @@ class DayCell extends React.Component {
     const newPayload = {
       type: event.target.value,
       content: this.props.payload.content,
-      date: this.props.id === null ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
+      date: this.props.id === "" ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
     }
+
     this.props.updateDayContentFunc(this.props.id, newPayload);
   }
 
   generateDisplayDate() {
-    if (!this.props.date) {
+    if (this.props.date === "") {
       return null;
     }
     // The serverDateFormat is not ISO standard, so specifying the formatting to moment to silence warnings
