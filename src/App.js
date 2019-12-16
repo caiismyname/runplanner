@@ -500,8 +500,7 @@ class DayCell extends React.Component {
     if (this.props.date === "") {
       return null;
     }
-    // The serverDateFormat is not ISO standard, so specifying the formatting to moment to silence warnings
-    return moment(this.props.date, serverDateFormat).format("M/DD/YY");
+    return moment(this.props.date).format("M/DD/YY");
   }
 
   render() {
