@@ -7,6 +7,10 @@ import axios from "axios";
 let serverDateFormat = "YYYY-MM-DD";
 let dbAddress = "http://localhost:4000/runplannerDB/";
 
+function isEmptyObject(obj) {
+  return Object.entries(obj).length === 0 && obj.constructor === Object;
+}
+
 class MonthHandler {
   // Defaults to current month if none is given
   constructor(now = moment()) {
@@ -178,10 +182,12 @@ class MainPanel extends React.Component {
       currentMonth: new MonthHandler(),
       workoutHandler: new WorkoutHandler(),
       workouts: {},
-      ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
+      ownerID: "5dfafd7e2580e663969653c0", // TODO mocking
       name: "",
       isCalendarMode: false, // TODO reconcile this with the DB format (enum)
-      countdownConfig: {},
+      countdownConfig: {
+        deadline: moment().format(serverDateFormat)
+      },
     }
   }
 
@@ -261,28 +267,19 @@ class MainPanel extends React.Component {
     const currentMonth = this.state.currentMonth;
     const alternateDisplayMode = this.state.isCalendarMode ? "countdown" : "calendar";
 
-    let content;
-    if (this.state.isCalendarMode) {
-      content =         
-        <div>
-          <Calendar 
-            currentMonth={currentMonth.getMonthInfo()}
-            decrementMonthHandler={() => this.decrementMonth()}
-            incrementMonthHandler={() => this.incrementMonth()}  
-            workouts={this.state.workouts}
-            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
-          />
-        </div>;
-    } else {
-      content = 
-        <div>
-          <CountdownView 
-            deadline={this.state.countdownConfig.deadline}
-            workouts={this.state.workouts}
-            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
-          />
-        </div>;
-    }
+    let content =         
+      <div>
+        <Calendar 
+          currentMonth={currentMonth.getMonthInfo()}
+          decrementMonthHandler={() => this.decrementMonth()}
+          incrementMonthHandler={() => this.incrementMonth()}  
+          workouts={this.state.workouts}
+          updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
+          deadline={this.state.countdownConfig.deadline}
+          isCalendarMode={this.state.isCalendarMode}
+          startingDayOfWeek={0} // TODO adjust
+        />
+      </div>;
 
     return (
       <div>
@@ -298,69 +295,39 @@ class MainPanel extends React.Component {
   }
 }
 
-class CountdownView extends React.Component {
-  fillDayArray(deadline) {
-    const startingDayOfWeek = Number(moment().format("d"));
-    // + 1 b/c we want to include the deadline day, + startingDayOfWeek because right now we cut off the days that have already passed.
-    // TODO show the full current week.
-    const deadlineObj = moment(deadline); // param deadline is a string, turning it into a moment object here
-    const daysUntilDeadline = Math.ceil(moment.duration(deadlineObj.diff(moment())).asDays()) + 1 + startingDayOfWeek;
-    // Pad the end of array if the deadline date is not the end of the week (as displayed);
-    const fullArrayLength = daysUntilDeadline + (daysUntilDeadline % 7 === 0 ? 0 : 7 - daysUntilDeadline % 7); 
-    const dayArray = Array(fullArrayLength).fill(null);
-
-    const currentDay = moment(); // This will keep track of what day the ith day is in the loop below. Used for getting the actual date.
-    for (let i = startingDayOfWeek; i < daysUntilDeadline; i++) {
-      const date = currentDay.format(serverDateFormat);
-      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : null;
-      const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
-      currentDay.add(1, "day");
-
-      dayArray.splice(i, 1, {
-        date: date,
-        payload: payload,
-        id: id,
-      });
-    }
-
-    return dayArray;
-  }
-  
-  render() {
-    // Split days into weeks
-    const dayArray = this.fillDayArray(this.props.deadline);
-    const weeks = [];
-
-    for (let i = 0; i < dayArray.length; i += 7) {
-      weeks.push(dayArray.slice(i, i + 7));
-    }
-
-    const weekElements = weeks.map((value, index) => {
-      return (
-        <div key={index.toString()}>
-          <WeekDisplay days={value} updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}/>
-        </div>
-      );
-    });
-
-    return (
-      <div>
-        <h1>{"Countdown Mode!"}</h1>
-        {weekElements}
-      </div>
-    );
-  }
-}
-
 class Calendar extends React.Component {
   fillDayArray() {
-    const fullArrayLength = 42; // 6 weeks * 7 days in a week. One month can span 6 weeks at maximum.
-    const startingDayOfWeek = this.props.currentMonth.startingDayOfWeek;
-    const totalDays = this.props.currentMonth.totalDays;
-    const month = this.props.currentMonth.month;
-
-    let dayArray = Array(fullArrayLength).fill(null); 
-    const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
+    let totalDays;
+    let fullArrayLength;
+    let startingDayOfWeek;
+    let month;
+    
+    if (this.props.isCalendarMode) {
+      fullArrayLength = 42; // 6 weeks * 7 days in a week. One month can span 6 weeks at maximum.
+      startingDayOfWeek = this.props.currentMonth.startingDayOfWeek;
+      totalDays = this.props.currentMonth.totalDays;
+      month = this.props.currentMonth.month;
+    } else {
+      startingDayOfWeek = this.props.startingDayOfWeek;
+      // This was Victor's version of the below, where A is the start of week and B is "today": abs(min((B-(A-7))*sgn(B-A), abs(B-A))
+      let todayDayOfWeek = Number(moment().format("d"));
+      let daysToStartOfWeek = startingDayOfWeek <= todayDayOfWeek 
+                                ? todayDayOfWeek - startingDayOfWeek 
+                                : (7 - startingDayOfWeek) + todayDayOfWeek;
+      
+      const startOfWeek = moment().subtract(daysToStartOfWeek, "days");
+      // param deadline is a string, turning it into a moment object here
+      const deadlineObj = moment(this.props.deadline);
+      // + 1 b/c we want to include the deadline day, 
+      totalDays = Math.ceil(moment.duration(deadlineObj.diff(startOfWeek)).asDays()) + 1;
+      // Pad the end of array if the deadline date is not the end of the week (as displayed);
+      fullArrayLength = totalDays + (totalDays % 7 === 0 ? 0 : 7 - totalDays % 7); 
+      month = moment().format(serverDateFormat);
+    }
+    
+    let dayArray = Array(fullArrayLength).fill({}); 
+     // Prefill with given month since calendar doesn't necessarily reflect the current month.
+    const currentDay = moment(month);
     for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
       const date = currentDay.format(serverDateFormat);
       const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : null;
@@ -376,7 +343,7 @@ class Calendar extends React.Component {
 
     // Filling the array to 6 weeks is the maximum case, but most months don't span 6 calendar weeks.
     // If the month only needs 5 weeks, remove the last (empty) week.
-    if (dayArray.slice(fullArrayLength - 7, fullArrayLength).every(elem => elem === null)) {
+    if (this.props.isCalendarMode && dayArray.slice(fullArrayLength - 7, fullArrayLength).every(elem => elem === null)) {
       dayArray = dayArray.slice(0, fullArrayLength - 7);
     }
 
@@ -400,14 +367,16 @@ class Calendar extends React.Component {
       );
     });
 
-
     return (
       <div>
-        <CalendarMonthControl 
-          currentMonth={this.props.currentMonth}
-          decrementMonthHandler={() => this.props.decrementMonthHandler()}
-          incrementMonthHandler={() => this.props.incrementMonthHandler()}
-        />
+        {this.props.isCalendarMode ? 
+          <CalendarMonthControl 
+            currentMonth={this.props.currentMonth}
+            decrementMonthHandler={() => this.props.decrementMonthHandler()}
+            incrementMonthHandler={() => this.props.incrementMonthHandler()}
+          />
+          : null
+        }
         {weekElements}
       </div>
     );
@@ -434,7 +403,7 @@ class WeekDisplay extends React.Component {
   render() {
     const days = this.props.days.slice()
     const dayCells = days.map((value, index) => {
-      if (!value) {
+      if (isEmptyObject(value)) {
         // Still have to return a div to keep flexbox spacing correct for the whole week.
         return <div className="dayCell" key={index}></div>;
       }
