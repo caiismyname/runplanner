@@ -185,6 +185,7 @@ class MainPanel extends React.Component {
       ownerID: "5dfafd7e2580e663969653c0", // TODO mocking
       name: "",
       isCalendarMode: false, // TODO reconcile this with the DB format (enum)
+      startingDayOfWeek: 0,
       countdownConfig: {
         deadline: moment().format(serverDateFormat)
       },
@@ -215,6 +216,7 @@ class MainPanel extends React.Component {
           "name": response.data.name,
           "isCalendarMode": response.data.config.default_view === "calendar",
           "countdownConfig": response.data.countdownConfig,
+          "startingDayOfWeek": response.data.config.startingDayOfWeek,
         });
         
         // Callback used to ensure config data is in place before populating workouts
@@ -249,13 +251,13 @@ class MainPanel extends React.Component {
   generateHeaderDayLabels() {
     let daysOfWeek = [];
     let dayFormatting = "ddd"; // ddd = Mon | dddd = Monday 
-    for (let i = 0; i < 7; i++) {
-      // You know. In case they change the name of Monday or something.
-      daysOfWeek.push(moment().day(i).format(dayFormatting));
+    for (let i = 0; i < 14; i++) {
+      // Order: Sun --> Sat
+      daysOfWeek.push(moment().day(i % 7).format(dayFormatting));
     }
-    if (this.props.startsOnMonday) {
-      daysOfWeek = daysOfWeek.slice(1).concat(daysOfWeek[0]);
-    }
+    
+    daysOfWeek = daysOfWeek.slice(this.state.startingDayOfWeek, this.state.startingDayOfWeek + 7);
+
     const dayLabels = daysOfWeek.map((value, index) => {
       return (<span key={value}><h1>{value}</h1></span>);
     });
@@ -277,7 +279,7 @@ class MainPanel extends React.Component {
           updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
           deadline={this.state.countdownConfig.deadline}
           isCalendarMode={this.state.isCalendarMode}
-          startingDayOfWeek={0} // TODO adjust
+          startingDayOfWeek={this.state.startingDayOfWeek}
         />
       </div>;
 

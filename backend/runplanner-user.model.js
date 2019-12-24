@@ -4,7 +4,11 @@ const Schema = mongoose.Schema;
 let User = new Schema({
     name: String,
     config: {
-        startsOnMonday: Boolean,
+        startingDayOfWeek: {
+            type: Number,
+            min: 0,
+            max: 6
+        },
         defaultView: {
             type: String,
             enum: ["calendar", "countdown"]
