@@ -232,6 +232,7 @@ class MainPanel extends React.Component {
       endDate = this.state.currentMonth.getMonthEnd()
     } else { // Countdown mode
       startDate = moment().format(serverDateFormat);
+      endDate = this.state.countdownConfig.deadline;
     }
 
     this.state.workoutHandler.pullWorkoutsFromDB(startDate, endDate, (workouts) => this.setState({workouts: workouts}));
