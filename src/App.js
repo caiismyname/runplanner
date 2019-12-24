@@ -45,7 +45,7 @@ class MonthHandler {
 
   getMonthEnd() {
     const monthInfo = this.getMonthInfo();
-    return monthInfo.month + "-" + monthInfo.totalDays;
+    return monthInfo.month + "-" + monthInfo.totalDisplayedDays;
   }
 
   incrementMonth() {
@@ -184,7 +184,7 @@ class MainPanel extends React.Component {
       workouts: {},
       ownerID: "5dfafd7e2580e663969653c0", // TODO mocking
       name: "",
-      isCalendarMode: false, // TODO reconcile this with the DB format (enum)
+      isCalendarMode: true, // TODO reconcile this with the DB format (enum)
       startingDayOfWeek: 0,
       countdownConfig: {
         deadline: moment().format(serverDateFormat)
@@ -232,7 +232,6 @@ class MainPanel extends React.Component {
       endDate = this.state.currentMonth.getMonthEnd()
     } else { // Countdown mode
       startDate = moment().format(serverDateFormat);
-      endDate = this.state.countdownConfig.deadline;
     }
 
     this.state.workoutHandler.pullWorkoutsFromDB(startDate, endDate, (workouts) => this.setState({workouts: workouts}));
@@ -255,7 +254,6 @@ class MainPanel extends React.Component {
       // Order: Sun --> Sat
       daysOfWeek.push(moment().day(i % 7).format(dayFormatting));
     }
-    
     daysOfWeek = daysOfWeek.slice(this.state.startingDayOfWeek, this.state.startingDayOfWeek + 7);
 
     const dayLabels = daysOfWeek.map((value, index) => {
@@ -299,38 +297,39 @@ class MainPanel extends React.Component {
 
 class Calendar extends React.Component {
   fillDayArray() {
-    let totalDays;
+    let firstDisplayedDay;
+    let totalDisplayedDays;
     let fullArrayLength;
-    let startingDayOfWeek;
     let month;
+    const startingDayOfWeek = this.props.startingDayOfWeek;
     
     if (this.props.isCalendarMode) {
-      fullArrayLength = 42; // 6 weeks * 7 days in a week. One month can span 6 weeks at maximum.
-      startingDayOfWeek = this.props.currentMonth.startingDayOfWeek;
-      totalDays = this.props.currentMonth.totalDays;
       month = this.props.currentMonth.month;
+      const startOfMonth = this.props.currentMonth.startingDayOfWeek;
+      const daysToStartOfWeek = startingDayOfWeek <= startOfMonth 
+                                ? startOfMonth - startingDayOfWeek 
+                                : (7 - startingDayOfWeek) + startOfMonth;
+      firstDisplayedDay = daysToStartOfWeek;
+      totalDisplayedDays = this.props.currentMonth.totalDays;
     } else {
-      startingDayOfWeek = this.props.startingDayOfWeek;
-      // This was Victor's version of the below, where A is the start of week and B is "today": abs(min((B-(A-7))*sgn(B-A), abs(B-A))
-      let todayDayOfWeek = Number(moment().format("d"));
-      let daysToStartOfWeek = startingDayOfWeek <= todayDayOfWeek 
-                                ? todayDayOfWeek - startingDayOfWeek 
-                                : (7 - startingDayOfWeek) + todayDayOfWeek;
-      
-      const startOfWeek = moment().subtract(daysToStartOfWeek, "days");
-      // param deadline is a string, turning it into a moment object here
-      const deadlineObj = moment(this.props.deadline);
-      // + 1 b/c we want to include the deadline day, 
-      totalDays = Math.ceil(moment.duration(deadlineObj.diff(startOfWeek)).asDays()) + 1;
-      // Pad the end of array if the deadline date is not the end of the week (as displayed);
-      fullArrayLength = totalDays + (totalDays % 7 === 0 ? 0 : 7 - totalDays % 7); 
       month = moment().format(serverDateFormat);
+      // This was Victor's version of the below, where A is the start of week and B is "today": abs(min((B-(A-7))*sgn(B-A), abs(B-A))
+      const today = Number(moment().format("d"));
+      const daysToStartOfWeek = startingDayOfWeek <= today 
+                                ? today - startingDayOfWeek 
+                                : (7 - startingDayOfWeek) + today;
+
+      firstDisplayedDay = daysToStartOfWeek;
+      const deadlineObj = moment(this.props.deadline);
+      totalDisplayedDays = Math.ceil(moment.duration(deadlineObj.diff(moment())).asDays()) + 1; // + 1 b/c we want to include the deadline day, 
     }
     
+    fullArrayLength = firstDisplayedDay + totalDisplayedDays; // Account for padding in the beginning
+    fullArrayLength = fullArrayLength + (fullArrayLength % 7 === 0 ? 0 : 7 - fullArrayLength % 7); // Pad extra days at the end
     let dayArray = Array(fullArrayLength).fill({}); 
-     // Prefill with given month since calendar doesn't necessarily reflect the current month.
-    const currentDay = moment(month);
-    for (let i = startingDayOfWeek; i < startingDayOfWeek + totalDays; i++) {
+
+    const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
+    for (let i = firstDisplayedDay; i < firstDisplayedDay + totalDisplayedDays; i++) {
       const date = currentDay.format(serverDateFormat);
       const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : null;
       const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
@@ -342,12 +341,6 @@ class Calendar extends React.Component {
 
       currentDay.add(1, "day");
     } 
-
-    // Filling the array to 6 weeks is the maximum case, but most months don't span 6 calendar weeks.
-    // If the month only needs 5 weeks, remove the last (empty) week.
-    if (this.props.isCalendarMode && dayArray.slice(fullArrayLength - 7, fullArrayLength).every(elem => elem === null)) {
-      dayArray = dayArray.slice(0, fullArrayLength - 7);
-    }
 
     return dayArray;
   }
