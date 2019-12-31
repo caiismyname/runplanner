@@ -7,6 +7,11 @@ import axios from "axios";
 let serverDateFormat = "YYYY-MM-DD";
 let dbAddress = "http://localhost:4000/runplannerDB/";
 
+let defaultView = {
+  CALENDAR: "calendar",
+  COUNTDOWN: "countdown",
+}
+
 function isEmptyObject(obj) {
   return Object.entries(obj).length === 0 && obj.constructor === Object;
 }
@@ -182,9 +187,9 @@ class MainPanel extends React.Component {
       currentMonth: new MonthHandler(),
       workoutHandler: new WorkoutHandler(),
       workouts: {},
-      ownerID: "5dfafd7e2580e663969653c0", // TODO mocking
+      ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
       name: "",
-      isCalendarMode: true, // TODO reconcile this with the DB format (enum)
+      defaultView: defaultView.CALENDAR,
       startingDayOfWeek: 0,
       countdownConfig: {
         deadline: moment().format(serverDateFormat)
@@ -206,7 +211,7 @@ class MainPanel extends React.Component {
   } 
 
   switchDisplayModes() {
-    this.setState({isCalendarMode: !this.state.isCalendarMode});
+    this.setState({defaultView: this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR});
   }
 
   populateUser(callback) {
@@ -214,7 +219,7 @@ class MainPanel extends React.Component {
       .then(response => {
         this.setState({
           "name": response.data.name,
-          "isCalendarMode": response.data.config.default_view === "calendar",
+          "defaultView": response.data.config.default_view,
           "countdownConfig": response.data.countdownConfig,
           "startingDayOfWeek": response.data.config.startingDayOfWeek,
         });
@@ -227,7 +232,7 @@ class MainPanel extends React.Component {
   populateWorkouts() {
     let startDate;
     let endDate;
-    if (this.state.isCalendarMode) {
+    if (this.props.defaultView === defaultView.CALENDAR) {
       startDate = this.state.currentMonth.getMonthStart();
       endDate = this.state.currentMonth.getMonthEnd()
     } else { // Countdown mode
@@ -266,7 +271,7 @@ class MainPanel extends React.Component {
   
   render() {
     const currentMonth = this.state.currentMonth;
-    const alternateDisplayMode = this.state.isCalendarMode ? "countdown" : "calendar";
+    const alternateDisplayMode = this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR;
 
     let content =         
       <div>
@@ -277,7 +282,7 @@ class MainPanel extends React.Component {
           workouts={this.state.workouts}
           updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
           deadline={this.state.countdownConfig.deadline}
-          isCalendarMode={this.state.isCalendarMode}
+          defaultView={this.state.defaultView}
           startingDayOfWeek={this.state.startingDayOfWeek}
         />
       </div>;
@@ -304,7 +309,7 @@ class Calendar extends React.Component {
     let month;
     const startingDayOfWeek = this.props.startingDayOfWeek;
     
-    if (this.props.isCalendarMode) {
+    if (this.props.defaultView === defaultView.CALENDAR) {
       month = this.props.currentMonth.month;
       const startOfMonth = this.props.currentMonth.startingDayOfWeek;
       const daysToStartOfWeek = startingDayOfWeek <= startOfMonth 
@@ -365,7 +370,7 @@ class Calendar extends React.Component {
 
     return (
       <div>
-        {this.props.isCalendarMode ? 
+        {this.props.defaultView === defaultView.CALENDAR ? 
           <CalendarMonthControl 
             currentMonth={this.props.currentMonth}
             decrementMonthHandler={() => this.props.decrementMonthHandler()}
