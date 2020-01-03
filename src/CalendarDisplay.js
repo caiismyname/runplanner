@@ -127,8 +127,8 @@ class CalendarMonthControl extends React.Component {
             <div>
                 <h1>{moment(this.props.currentMonth.month).format("MMMM YYYY")}</h1>
                 <div>
-                <button onClick={() => this.props.decrementMonthHandler()}>{"<"}</button>
-                <button onClick={() => this.props.incrementMonthHandler()}>{">"}</button>
+                    <button onClick={() => this.props.decrementMonthHandler()}>{"<"}</button>
+                    <button onClick={() => this.props.incrementMonthHandler()}>{">"}</button>
                 </div>
             </div>
         );
@@ -179,11 +179,13 @@ class DayCell extends React.Component {
         let content;
         if (this.props.payload.type !== "" && this.props.payload.content !== "") {
         content =  (
-            <div style={{border: "1px solid green"}} onClick={() => this.props.addNewWorkoutHandler(this.props.date, this.props.id)}>
-            <h3>{this.props.payload.type}</h3>
-            <p>{this.props.payload.content}</p>
-
-          </div>
+            <div 
+                style={{border: "1px solid green"}} 
+                onClick={() => this.props.addNewWorkoutHandler(this.props.date, this.props.id)}
+            >
+                <h3>{this.props.payload.type}</h3>
+                <p>{this.props.payload.content}</p>
+            </div>
         );
         } else {
         content = (

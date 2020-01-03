@@ -12,6 +12,10 @@ class NewWorkoutModule extends React.Component {
     this.handleWorkoutTypeChange = this.handleWorkoutTypeChange.bind(this);
   }
 
+  generateDisplayDate() {
+      return moment(this.props.payload.date).format("M/DD/YY");
+  }
+
   timeSetter(timeString) {
     // TODO I have no idea how to address timezones. This is a problem for later.
     let time = moment(timeString);
@@ -49,7 +53,7 @@ class NewWorkoutModule extends React.Component {
 
     return (
       <div style={{modalStyle}}>
-        <h1>{this.props.payload.date}</h1>
+        <h1>{this.generateDisplayDate()}</h1>
         <h2>Type</h2>
         <textarea value={this.props.payload.type} onChange={this.handleWorkoutTypeChange}/>
         <h2>Content</h2>
