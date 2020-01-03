@@ -3,6 +3,9 @@ import './App.css';
 import moment from 'moment';
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
+import NewWorkoutModule from "./NewWorkoutModal";
+
+import plus_icon from './plus_icon.png';
 
 let serverDateFormat = "YYYY-MM-DD";
 let dbAddress = "http://localhost:4000/runplannerDB/";
@@ -183,6 +186,9 @@ class MainPanel extends React.Component {
   constructor(props) {
     super(props);
 
+    // This has to come before this.state is set. I don't know why.
+    this.toggleAddWorkoutModule = this.toggleAddWorkoutModule.bind(this);
+
     this.state = {
       currentMonth: new MonthHandler(),
       workoutHandler: new WorkoutHandler(),
@@ -194,6 +200,11 @@ class MainPanel extends React.Component {
       countdownConfig: {
         deadline: moment().format(serverDateFormat)
       },
+      addWorkoutModuleConfig: {
+        showingAddWorkoutModule: false,
+        workoutId: "",
+        workoutDate: "",
+      }
     }
   }
 
@@ -253,6 +264,7 @@ class MainPanel extends React.Component {
     this.state.workoutHandler.syncToDB(workouts => this.setState({workouts: workouts}));
   }
 
+  // TODO move this into calendar object
   generateHeaderDayLabels() {
     let daysOfWeek = [];
     let dayFormatting = "ddd"; // ddd = Mon | dddd = Monday 
@@ -268,33 +280,61 @@ class MainPanel extends React.Component {
 
     return dayLabels;
   }
+
+  toggleAddWorkoutModule(date="", id="") {
+    let newState = {
+      showingAddWorkoutModule: !this.state.addWorkoutModuleConfig.showingAddWorkoutModule
+    }
+    
+    // If date is given, we're opening the module, and must populate the payload
+    if (date !== "") {
+      newState["workoutDate"] = date;
+      newState["workoutId"] = id;
+    }
+
+    this.setState({addWorkoutModuleConfig: newState});
+  }
   
   render() {
     const currentMonth = this.state.currentMonth;
     const alternateDisplayMode = this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR;
+    const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
 
-    let content =         
-      <div>
-        <Calendar 
-          currentMonth={currentMonth.getMonthInfo()}
-          decrementMonthHandler={() => this.decrementMonth()}
-          incrementMonthHandler={() => this.incrementMonth()}  
-          workouts={this.state.workouts}
-          updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
-          deadline={this.state.countdownConfig.deadline}
-          defaultView={this.state.defaultView}
-          startingDayOfWeek={this.state.startingDayOfWeek}
-        />
+    const content =         
+      <div style={{display: "flex"}}>
+          <NewWorkoutModule
+            show={addWorkoutModuleConfig.showingAddWorkoutModule}
+            onClose={this.toggleAddWorkoutModule}
+            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
+            payload={
+              this.state.workouts[addWorkoutModuleConfig.workoutDate] 
+              ? this.state.workouts[addWorkoutModuleConfig.workoutDate].payload 
+              : {date: addWorkoutModuleConfig.workoutDate}}
+            id={addWorkoutModuleConfig.workoutId}
+          />
+        <div style={{flex: "1"}}>
+          <div className="dayLabels">
+            {this.generateHeaderDayLabels()}
+          </div>
+          <Calendar 
+            currentMonth={currentMonth.getMonthInfo()}
+            decrementMonthHandler={() => this.decrementMonth()}
+            incrementMonthHandler={() => this.incrementMonth()} 
+            addNewWorkoutHandler={(date, id) => this.toggleAddWorkoutModule(date, id)}
+            workouts={this.state.workouts}
+            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
+            deadline={this.state.countdownConfig.deadline}
+            defaultView={this.state.defaultView}
+            startingDayOfWeek={this.state.startingDayOfWeek}
+          />
+        </div>
       </div>;
 
     return (
       <div>
         <h1>{"Hi " + this.state.name + "!"}</h1>
         <button onClick={() => this.switchDisplayModes()}>{"Switch to " + alternateDisplayMode + " mode"}</button>
-        <div className="dayLabels">
-          {this.generateHeaderDayLabels()}
-        </div>
-        <button onClick={() => this.updateDB()}><h2>Save</h2></button>
+        <button onClick={() => this.updateDB()}>Save Edits</button>
         {content}
       </div>
     );
@@ -363,7 +403,11 @@ class Calendar extends React.Component {
     const weekElements = weeks.map((value, index) => {
       return (
         <div key={index.toString()}>
-          <WeekDisplay days={value} updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}/>
+          <WeekDisplay 
+            days={value} 
+            updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}
+            addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+          />
         </div>
       );
     });
@@ -418,6 +462,7 @@ class WeekDisplay extends React.Component {
             payload={value.payload ? value.payload : {"content": "", "type": "", "date": ""}} 
             id={value.id ? value.id : ""}
             updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
+            addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
           />
         </div>
       );
@@ -432,67 +477,45 @@ class WeekDisplay extends React.Component {
 }
 
 class DayCell extends React.Component {
-  constructor(props) {
-    super(props);
-
-    this.handleWorkoutContentChange = this.handleWorkoutContentChange.bind(this);
-    this.handleWorkoutTypeChange = this.handleWorkoutTypeChange.bind(this);
-  }
-
-  timeSetter(timeString) {
-    // TODO I have no idea how to address timezones. THis is a problem for later.
-    let time = moment(timeString);
-    time.hour(8);
-    time.minute(0);
-    return time;
-  }
+  generateDisplayDate() {
+    if (this.props.date === "") {
+      return null;
+    }
+    return moment(this.props.date).format("M/DD/YY");
+  }
   
-  handleWorkoutContentChange(event) {
-    const newPayload = {
-      type: this.props.payload.type,
-      content: event.target.value,
-      date: this.props.id === "" ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
+  render() {
+    let content;
+    if (this.props.payload.type !== "" && this.props.payload.content !== "") {
+      content =  (
+        <div style={{border: "1px solid green"}} onClick={() => this.props.addNewWorkoutHandler(this.props.date, this.props.id)}>
+          <h3>{this.props.payload.type}</h3>
+          <p>{this.props.payload.content}</p>
+
+        </div>
+      );
+    } else {
+      content = (
+        <div>
+          <img 
+            src={plus_icon} 
+            alt="Add new workout" 
+            style={{width: "34%", margin: "auto", display: "block"}}
+            onClick={() => this.props.addNewWorkoutHandler(this.props.date, this.props.id)}
+          />
+        </div>
+      );
     }
-    this.props.updateDayContentFunc(this.props.id, newPayload);
-  }
 
-  handleWorkoutTypeChange(event) {
-    const newPayload = {
-      type: event.target.value,
-      content: this.props.payload.content,
-      date: this.props.id === "" ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
-    }
-
-    this.props.updateDayContentFunc(this.props.id, newPayload);
-  }
-
-  generateDisplayDate() {
-    if (this.props.date === "") {
-      return null;
-    }
-    return moment(this.props.date).format("M/DD/YY");
-  }
-
-  render() {
-    let contentField;
-    // if (this.props.payload.content) {
-    //   contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
-    // } else {
-    //   // Prevents displaying an empty text box on empty days
-    //   contentField = null;
-    // }
-    contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
-
-    return (
-      <div>
-        <h2>{this.generateDisplayDate()}</h2>
-        <textarea value={this.props.payload.type} onChange={this.handleWorkoutTypeChange}/> {/* don't forget to style this lol*/}
-        {contentField}
-      </div>
-    );
-  }
+    return (
+      <div>
+        <h2>{this.generateDisplayDate()}</h2>
+        {content}
+      </div>
+    );
+  }
 }
-
+  
 function App() {
   return (
     <Router>
