@@ -1,19 +1,21 @@
 import React from 'react';
 import './App.css';
-import moment from 'moment';
+// import moment from 'moment';
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
 
 import NewWorkoutModule from "./NewWorkoutModal";
 import Calendar from "./CalendarDisplay";
 
+var moment = require('moment-timezone');
+
 let serverDateFormat = "YYYY-MM-DD";
 let dbAddress = "http://localhost:4000/runplannerDB/";
-
 let defaultView = {
   CALENDAR: "calendar",
   COUNTDOWN: "countdown",
-}
+};
+let defaultStartTime = {hour: 7, minute: 0}; // 24 hour time
 
 function isEmptyObject(obj) {
   return Object.entries(obj).length === 0 && obj.constructor === Object;
@@ -196,6 +198,7 @@ class MainPanel extends React.Component {
       ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
       name: "",
       defaultView: defaultView.CALENDAR,
+      mainTimezone: "America/Los_Angeles",
       startingDayOfWeek: 0,
       countdownConfig: {
         deadline: moment().format(serverDateFormat)
@@ -231,6 +234,7 @@ class MainPanel extends React.Component {
         this.setState({
           "name": response.data.name,
           "defaultView": response.data.config.default_view,
+          "mainTimezone": response.data.config.mainTimezone,
           "countdownConfig": response.data.countdownConfig,
           "startingDayOfWeek": response.data.config.startingDayOfWeek,
         });
@@ -283,16 +287,27 @@ class MainPanel extends React.Component {
     const alternateDisplayMode = this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR;
     const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
 
+    let newWorkoutModulePayload;
+    if (this.state.workouts[addWorkoutModuleConfig.workoutDate]) {
+      newWorkoutModulePayload = this.state.workouts[addWorkoutModuleConfig.workoutDate].payload;
+    } else {
+      let date = moment(addWorkoutModuleConfig.workoutDate);
+      date.hour(defaultStartTime.hour);
+      date.minute(defaultStartTime.minute);
+      date = moment.tz(date, this.state.mainTimezone);
+      
+      newWorkoutModulePayload = {
+        date: date.toISOString(),
+      };
+    }
+
     const content =         
       <div style={{display: "flex"}}>
           <NewWorkoutModule
             show={addWorkoutModuleConfig.showingAddWorkoutModule}
             onClose={this.toggleAddWorkoutModule}
             updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
-            payload={
-              this.state.workouts[addWorkoutModuleConfig.workoutDate] 
-              ? this.state.workouts[addWorkoutModuleConfig.workoutDate].payload 
-              : {date: addWorkoutModuleConfig.workoutDate}}
+            payload={newWorkoutModulePayload}
             id={addWorkoutModuleConfig.workoutId}
           />
         <div style={{flex: "1"}}>

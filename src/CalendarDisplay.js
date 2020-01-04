@@ -1,8 +1,10 @@
 import React from 'react';
 import './App.css';
-import moment from 'moment';
-
+// import moment from 'moment';
 import plus_icon from './plus_icon.png';
+var moment = require('moment-timezone');
+
+
 
 let serverDateFormat = "YYYY-MM-DD";
 let defaultView = {
