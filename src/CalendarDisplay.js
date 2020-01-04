@@ -1,6 +1,5 @@
 import React from 'react';
 import './App.css';
-// import moment from 'moment';
 import plus_icon from './plus_icon.png';
 var moment = require('moment-timezone');
 
@@ -113,7 +112,7 @@ class Calendar extends React.Component {
             />
             : null
           }
-          <div class="dayLabels">
+          <div className="dayLabels">
             {this.generateHeaderDayLabels()}
           </div>
           {weekElements}

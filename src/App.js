@@ -1,6 +1,5 @@
 import React from 'react';
 import './App.css';
-// import moment from 'moment';
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
 
@@ -289,6 +288,7 @@ class MainPanel extends React.Component {
 
     let newWorkoutModulePayload;
     if (this.state.workouts[addWorkoutModuleConfig.workoutDate]) {
+      // TODO remove the layer of 'payload' from the 'workouts' obj
       newWorkoutModulePayload = this.state.workouts[addWorkoutModuleConfig.workoutDate].payload;
     } else {
       let date = moment(addWorkoutModuleConfig.workoutDate);

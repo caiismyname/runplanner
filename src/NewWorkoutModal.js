@@ -1,7 +1,6 @@
 // Credit to https://daveceddia.com/open-modal-in-react/
 
 import React from 'react';
-// import moment from 'moment';
 // import PropTypes from 'prop-types';
 var moment = require('moment-timezone');
 
@@ -9,8 +8,6 @@ let workoutFields = {
   TYPE: "type",
   CONTENT: "content",
   "DATE": "date",
-  // "HOUR": "hour",
-  // "MINUTE": "minute",
 };
 let dateDisplayFormat = "M/DD/YY";
 
@@ -23,8 +20,6 @@ class NewWorkoutModule extends React.Component {
   handleWorkoutChange(newValue, source) {
     let newPayload = { ...this.props.payload};
     newPayload[source] = newValue;
-
-    // newPayload["date"] = this.props.id === "" ? this.timeSetter(this.props.payload.date).toISOString() : this.props.payload.date;
 
     // NOTE: If the empty `this.props.id` is passed to WorkoutHandler, the WorkoutHandler will auto assign the date+time as the temp ID
     this.props.updateDayContentFunc(this.props.id, newPayload);
@@ -87,10 +82,9 @@ class TimeEntry extends React.Component {
 
   generateNewDateTime() {
     const oldTime = moment(this.props.date);
-    oldTime.hour(Number(this.state.hour + (this.period === "pm"? 12 : 0)));
+    oldTime.hour(Number(this.state.hour) + (this.period === "pm"? 12 : 0));
     oldTime.minute(Number(this.state.minute));
-    
-    console.log(this.props.date, oldTime.toISOString());
+
     return oldTime.toISOString();
   }
 
