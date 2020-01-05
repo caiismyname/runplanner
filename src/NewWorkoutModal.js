@@ -1,15 +1,17 @@
-// Credit to https://daveceddia.com/open-modal-in-react/
-
 import React from 'react';
 // import PropTypes from 'prop-types';
 var moment = require('moment-timezone');
 
-let workoutFields = {
+const workoutFields = {
   TYPE: "type",
   CONTENT: "content",
   DATE: "date",
 };
-let dateDisplayFormat = "M/DD/YY";
+const TimeFields = {
+  HOUR: "hour",
+  "MINUTE": "minute",
+};
+const dateDisplayFormat = "M/DD/YY";
 
 class NewWorkoutModule extends React.Component {
   constructor(props) {
@@ -19,17 +21,15 @@ class NewWorkoutModule extends React.Component {
 
   handleWorkoutChange(newValue, source) {
     let newPayload = { ...this.props.payload};
-    console.log(source, newValue);
     newPayload[source] = newValue;
 
-    // NOTE: If the empty `this.props.id` is passed to WorkoutHandler, the WorkoutHandler will auto assign the date+time as the temp ID
     this.props.updateDayContentFunc(this.props.id, newPayload);
   }
 
   render() {
     if(!this.props.show) {
       return null;
-    }
+    };
 
     const modalStyle = {
       flex: "0 0 35%",
@@ -68,22 +68,33 @@ class TimeEntry extends React.Component {
   constructor(props) {
     super(props);
 
-    const displayTime = moment(props.date);
-    const displayHour = displayTime.format("h");
-    const displayMinute = displayTime.format("mm");
-    const displayPeriod = displayTime.format("a");
-
     this.state = {
-      hour: displayHour,
-      minute: displayMinute,
-      period: displayPeriod,
-    };
+      blankHour: false,
+      blankMinute: false,
+      minuteDisplayMode: "mm",
+    }
   }
 
-  generateNewDateTime() {
+  generateDisplayHour() {
+    return this.state.blankHour ? "" : moment(this.props.date).format("h");
+  }
+
+  generateDisplayMinute() {
+    return this.state.blankMinute ? "" : moment(this.props.date).format(this.state.minuteDisplayMode);
+  }
+
+  generateDisplayPeriod() {
+    return moment(this.props.date).format("a");
+  }
+
+  generateNewDateTime(field, value) {
     const oldTime = moment(this.props.date);
-    oldTime.hour(Number(this.state.hour) + (this.period === "pm"? 12 : 0));
-    oldTime.minute(Number(this.state.minute));
+
+    if (field === TimeFields.HOUR) {
+      oldTime.hour(Number(value));
+    } else if (field === TimeFields.MINUTE) {
+      oldTime.minute(Number(value));
+    }
 
     return oldTime.toISOString();
   }
@@ -93,45 +104,48 @@ class TimeEntry extends React.Component {
       <div style={{display: "inline"}}>
         <textarea 
           style={{float: "left", width: "2em", height: "1em", resize: "none"}} 
-          value={this.state.hour}
+          value={this.generateDisplayHour()}
           onChange={(e) => {
             const value = e.target.value.slice(0,2);
             if (Number(value) > 12) {
               return;
-            } 
-            this.setState({hour: value}, () => {
-              this.props.callback(this.generateNewDateTime());
-            });
+            };
+
+            if (value === "") {
+              this.setState({blankHour: true});
+            } else {
+              this.setState({blankHour: false});
+              this.props.callback(this.generateNewDateTime(TimeFields.HOUR, value));
+            };
           }}  
         />
         <textarea 
           style={{float: "left", width: "2em", height: "1em", resize: "none"}} 
-          value={this.state.minute}
+          value={this.generateDisplayMinute()}
           onChange={(e) => {
             let value = e.target.value.slice(0,2);
             if (Number(value) > 59) {
               return;
             } 
-            this.setState({minute: value}, () => {
-              this.props.callback(this.generateNewDateTime());
-            });
+
+            if (value === "" || value === "0") {
+              this.setState({blankMinute: true, minuteDisplayMode: "m"});
+            } else {
+              this.setState({blankMinute: false, minuteDisplayMode: "m"});
+              this.props.callback(this.generateNewDateTime(TimeFields.MINUTE, value));
+            };
           }}
-          onBlur={() => {
-            // Pad single digit minutes with leading 0
-            if (this.state.minute.length === 1) {
-              this.setState({minute: "0" + this.state.minute});
-            }
-          }}
+          onBlur={() => this.setState({minuteDisplayMode: "mm"})}
         />
         <button 
           style={{float: "left"}}
           onClick={() => {
-            this.setState({period: this.state.period === "am" ? "pm" : "am"}, () => {
-              this.props.callback(this.generateNewDateTime);
-            });
+            const hourAdjustment = this.generateDisplayPeriod() === "am" ? 12 : -12;
+            const newHour = moment(this.props.date).hour() + hourAdjustment;
+            this.props.callback(this.generateNewDateTime(TimeFields.HOUR, newHour));
           }}
         >
-          {this.state.period}
+          {this.generateDisplayPeriod()}
         </button>
       </div>
     )

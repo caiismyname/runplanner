@@ -1,12 +1,9 @@
 import React from 'react';
 import './App.css';
-import plus_icon from './plus_icon.png';
 var moment = require('moment-timezone');
 
-
-
-let serverDateFormat = "YYYY-MM-DD";
-let defaultView = {
+const serverDateFormat = "YYYY-MM-DD";
+const defaultView = {
     CALENDAR: "calendar",
     COUNTDOWN: "countdown",
   }
@@ -53,11 +50,9 @@ class Calendar extends React.Component {
       for (let i = firstDisplayedDay; i < firstDisplayedDay + totalDisplayedDays; i++) {
         const date = currentDay.format(serverDateFormat);
         const payloads = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : null;
-        // const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
         dayArray.splice(i, 1, {
           date: date,
           payloads: payloads,
-        //   id: id,
         });
   
         currentDay.add(1, "day");
@@ -153,7 +148,6 @@ class WeekDisplay extends React.Component {
               // This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
               date={value ? value.date : ""}
               payloads={value.payloads ? value.payloads : [{payload: {"content": "", "type": "", "date": ""}, id: ""}]} 
-              //{/* id={value.id ? value.id : ""} */}
               updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
             />
@@ -179,7 +173,6 @@ class DayCell extends React.Component {
     
     render() {
         const content = [];
-        // if (this.props.payloads[0].type !== "" && this.props.payloads[0].content !== "") {
         if (this.props.payloads[0].id !== "") {
             this.props.payloads.forEach((workout) => {
                 content.push(
