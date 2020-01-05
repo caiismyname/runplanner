@@ -49,14 +49,15 @@ class Calendar extends React.Component {
       let dayArray = Array(fullArrayLength).fill({}); 
   
       const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
+
       for (let i = firstDisplayedDay; i < firstDisplayedDay + totalDisplayedDays; i++) {
         const date = currentDay.format(serverDateFormat);
-        const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : null;
-        const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
+        const payloads = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : null;
+        // const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
         dayArray.splice(i, 1, {
           date: date,
-          payload: payload,
-          id: id,
+          payloads: payloads,
+        //   id: id,
         });
   
         currentDay.add(1, "day");
@@ -151,8 +152,8 @@ class WeekDisplay extends React.Component {
               // An input should be either uncontrolled (value always undef/null) or controlled (value is a string, so it should be an empty string rather than null) for its entire lifetime.
               // This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
               date={value ? value.date : ""}
-              payload={value.payload ? value.payload : {"content": "", "type": "", "date": ""}} 
-              id={value.id ? value.id : ""}
+              payloads={value.payloads ? value.payloads : [{payload: {"content": "", "type": "", "date": ""}, id: ""}]} 
+              //{/* id={value.id ? value.id : ""} */}
               updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
             />
@@ -177,34 +178,36 @@ class DayCell extends React.Component {
     }
     
     render() {
-        let content;
-        if (this.props.payload.type !== "" && this.props.payload.content !== "") {
-        content =  (
-            <div 
-                style={{border: "1px solid green"}} 
-                onClick={() => this.props.addNewWorkoutHandler(this.props.date, this.props.id)}
+        const content = [];
+        // if (this.props.payloads[0].type !== "" && this.props.payloads[0].content !== "") {
+        if (this.props.payloads[0].id !== "") {
+            this.props.payloads.forEach((workout) => {
+                content.push(
+                    <div 
+                        style={{border: "1px solid green"}} 
+                        onClick={() => this.props.addNewWorkoutHandler(workout.payload.date, workout.id)}
+                    >
+                        <h3>{workout.payload.type}</h3>
+                        <p>{workout.payload.content}</p>
+                    </div>
+                );
+            });
+        } 
+
+        const plusButton = (
+            <button
+                style={{width: "34%", margin: "auto", display: "block", border: "2px solid red"}}
+                onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
             >
-                <h3>{this.props.payload.type}</h3>
-                <p>{this.props.payload.content}</p>
-            </div>
+            <h1>+</h1>
+            </button>
         );
-        } else {
-        content = (
-            <div>
-            <img 
-                src={plus_icon} 
-                alt="Add new workout" 
-                style={{width: "34%", margin: "auto", display: "block"}}
-                onClick={() => this.props.addNewWorkoutHandler(this.props.date, this.props.id)}
-            />
-            </div>
-        );
-        }
   
       return (
           <div>
             <h2>{this.generateDisplayDate()}</h2>
             {content}
+            {plusButton}
           </div>
       );
     }

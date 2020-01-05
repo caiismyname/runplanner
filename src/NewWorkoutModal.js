@@ -7,7 +7,7 @@ var moment = require('moment-timezone');
 let workoutFields = {
   TYPE: "type",
   CONTENT: "content",
-  "DATE": "date",
+  DATE: "date",
 };
 let dateDisplayFormat = "M/DD/YY";
 
@@ -19,6 +19,7 @@ class NewWorkoutModule extends React.Component {
 
   handleWorkoutChange(newValue, source) {
     let newPayload = { ...this.props.payload};
+    console.log(source, newValue);
     newPayload[source] = newValue;
 
     // NOTE: If the empty `this.props.id` is passed to WorkoutHandler, the WorkoutHandler will auto assign the date+time as the temp ID
@@ -41,7 +42,6 @@ class NewWorkoutModule extends React.Component {
         <TimeEntry 
           date={this.props.payload.date}
           callback={(newDateTime) => {
-            console.log("received " + newDateTime);
             this.handleWorkoutChange(newDateTime, workoutFields.DATE);
           }}
         />

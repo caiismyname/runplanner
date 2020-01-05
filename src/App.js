@@ -86,32 +86,46 @@ class WorkoutHandler {
       this.modified.push(id);
       callback(this.generateDisplayWorkouts());
     } else { // For new workouts, there is no id
+        // Use addWorkout to keep the workoutId from being in both the "modified" and the "new" arrays
         this.addWorkout(payload, callback);
     }
   }
 
   addWorkout(payload, callback) {
     const date = moment(payload.date).format(serverDateFormat);
-    const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
+    // Clarifies the use of the date in the "ID" context below.
+    // Use the full date string to include timestamp, in case there are multiple new events on a day
+    // TODO what if the time gets changed?
+    const tempId = payload.date;
 
     if (tempId in this.workouts) {
-      const old = this.workouts[tempId].payload;
+      const old = this.workouts[tempId];
       const mergedPayload = {};
       Object.keys(payload).forEach(k => {
         mergedPayload[k] = payload[k] === "" ? old[k] : payload[k];
       });
-      this.workouts[tempId] = {payload: mergedPayload};
+      this.workouts[tempId] = mergedPayload;
     } else {
-      this.workouts[tempId] = {payload: payload};
+      this.workouts[tempId] = payload;
     }
     
-    this.dates[date] = tempId; 
-    this.newWorkouts.push(tempId);
-
-    callback(this.generateDisplayWorkouts());
+    if (date in this.dates && !(this.dates[date].includes(tempId))) {
+      this.dates[date].push(tempId);
+    } else {
+      this.dates[date] = [tempId]; 
+    }
+    
+    if (!(this.newWorkouts.includes(tempId))) {
+      this.newWorkouts.push(tempId);
+      callback(this.generateDisplayWorkouts(), tempId);
+    } else {
+      callback(this.generateDisplayWorkouts());
+    }
+    
   }
 
   syncToDB(callback) {
+    // TODO do these still need to be deduped?
     const modified = [...new Set(this.modified)]; // Dedup the list
     const newWorkouts = [...new Set(this.newWorkouts)]; // Dedup the list
     let workoutsToUpdate = modified.map(x => {
@@ -123,7 +137,7 @@ class WorkoutHandler {
     let workoutsToAdd = newWorkouts.map(x => {
       return {
         owner: this.ownerID,
-        payload: this.workouts[x].payload,
+        payload: this.workouts[x],
       }
     });
     
@@ -157,12 +171,14 @@ class WorkoutHandler {
         if (response) {
           response.data.forEach(workout => {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
-            this.workouts[workout.id] = {
-              payload: workout.payload,
-            }
+            this.workouts[workout.id] = workout.payload;
             
             const formattedDate = moment(workout.payload.date).format(serverDateFormat);
-            this.dates[formattedDate] = workout.id;
+            if (formattedDate in this.dates) {
+              this.dates[formattedDate].push(workout.id);
+            } else {
+              this.dates[formattedDate] = [workout.id];
+            }
           });
           callback(this.generateDisplayWorkouts());
         }
@@ -171,16 +187,21 @@ class WorkoutHandler {
 
   generateDisplayWorkouts() {
     let res = {};
-    Object.keys(this.dates).forEach((key,idx) => {
-      res[key] = {
-        payload: this.workouts[this.dates[key]].payload,
-        id: this.dates[key],
-      }
+    Object.keys(this.dates).forEach((date, idx) => {
+      const workoutsOnDate = [];
+      this.dates[date].forEach((workoutId) => {
+        workoutsOnDate.push({payload: this.workouts[workoutId], id: workoutId});
+      });
+
+      res[date] = workoutsOnDate;
     });
 
     return res;
   }
 
+  getWorkoutById(id) {
+    return this.workouts[id];
+  }
 }
 
 class MainPanel extends React.Component {
@@ -258,8 +279,20 @@ class MainPanel extends React.Component {
   }
   
   updateDayContent(id, payload) {
-    this.state.workoutHandler.updateWorkout(id, payload, workouts => {
-      this.setState({workouts: workouts});
+    this.state.workoutHandler.updateWorkout(id, payload, (workouts, newWorkoutId = "") => {
+      const newState = {workouts: workouts};
+      if (newWorkoutId !== "" && this.state.addWorkoutModuleConfig.workoutId === "") {
+        // Assumption: updateDayContent is called whenever any change is made in the AddNewWorkoutModule.
+        // Therefore, it can also be used to infer when the workout was added to the WorkoutHandler.
+        // Problem: After the workout is added to the workout handler, it has an ID. This ID has
+        // to be communicated to the AddNewWorkoutModule in order to properly reflect ongoing changes via props.
+        // Solution: First time addNewWorkout is called in WorkoutHandler with a new ID (temp id), it will 
+        // pass the ID to the callback (this function) where it will be set as the ID of the workout
+        // currently occupying the AddNewWorkoutModule. 
+        newState.addWorkoutModuleConfig = { ...this.state.addWorkoutModuleConfig};
+        newState.addWorkoutModuleConfig.workoutId = newWorkoutId;
+      }
+      this.setState(newState);
     });
   }
 
@@ -274,8 +307,9 @@ class MainPanel extends React.Component {
     
     // If date is given, we're opening the module, and must populate the payload
     if (date !== "") {
-      newState["workoutDate"] = date;
-      newState["workoutId"] = id;
+      newState.workoutDate = date;
+      newState.workoutId = id;
+      newState.showingAddWorkoutModule = true; // Override in case the module is already open and a new date is selected
     }
 
     this.setState({addWorkoutModuleConfig: newState});
@@ -287,25 +321,30 @@ class MainPanel extends React.Component {
     const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
 
     let newWorkoutModulePayload;
-    if (this.state.workouts[addWorkoutModuleConfig.workoutDate]) {
-      // TODO remove the layer of 'payload' from the 'workouts' obj
-      newWorkoutModulePayload = this.state.workouts[addWorkoutModuleConfig.workoutDate].payload;
-    } else {
-      let date = moment(addWorkoutModuleConfig.workoutDate);
-      date.hour(defaultStartTime.hour);
-      date.minute(defaultStartTime.minute);
-      date = moment.tz(date, this.state.mainTimezone);
-      
-      newWorkoutModulePayload = {
-        date: date.toISOString(),
+    if (this.state.addWorkoutModuleConfig.showingAddWorkoutModule) {
+      if (this.state.addWorkoutModuleConfig.workoutId !== "") {
+        // Showing existing workout
+        newWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutId);
+      } else {
+        // Adding new workout
+        let date = moment(addWorkoutModuleConfig.workoutDate);
+        date.hour(defaultStartTime.hour);
+        date.minute(defaultStartTime.minute);
+        date = moment.tz(date, this.state.mainTimezone);
+        
+        newWorkoutModulePayload = {
+          date: date.toISOString(),
+          content: "",
+          type: "",
+        };
       };
-    }
+    };
 
     const content =         
       <div style={{display: "flex"}}>
           <NewWorkoutModule
             show={addWorkoutModuleConfig.showingAddWorkoutModule}
-            onClose={this.toggleAddWorkoutModule}
+            onClose={() => this.toggleAddWorkoutModule("", "")}
             updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
             payload={newWorkoutModulePayload}
             id={addWorkoutModuleConfig.workoutId}
