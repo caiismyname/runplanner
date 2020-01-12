@@ -1,16 +1,19 @@
 import React from 'react';
 import './App.css';
-import moment from 'moment';
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
 
-let serverDateFormat = "YYYY-MM-DD";
-let dbAddress = "http://localhost:4000/runplannerDB/";
+import NewWorkoutModule from "./NewWorkoutModal";
+import Calendar from "./CalendarDisplay";
 
-let defaultView = {
+var moment = require('moment-timezone');
+
+const serverDateFormat = "YYYY-MM-DD";
+const dbAddress = "http://localhost:4000/runplannerDB/";
+const defaultView = {
   CALENDAR: "calendar",
   COUNTDOWN: "countdown",
-}
+};
 
 function isEmptyObject(obj) {
   return Object.entries(obj).length === 0 && obj.constructor === Object;
@@ -63,64 +66,84 @@ class MonthHandler {
 }
 
 class WorkoutHandler {
-  constructor(ownerID = "") {
+  // Initialize to empty since MainPanel won't have pulled from DB yet when WorkoutHandler is constructed.
+  constructor(ownerID = "", mainTimezone = "") {
     this.ownerID = ownerID;
     this.workouts = {}; // Key = MongoID, Value = workout details
     this.dates = {}; // Key = date, Value = MongID (to use as reference into above dict)
     this.modified = [];
-    this.newWorkouts = [];
+    this.mainTimezone = mainTimezone;
   }
 
   setOwnerID(id) {
     this.ownerID = id;
   }
 
+  setMainTimezone(timezone) {
+    this.mainTimezone = timezone;
+  }
+
+  generateEmptyPayload(givenDate) {
+    const defaultStartTime = {hour: 7, minute: 0}; // 24 hour time
+
+    let date = moment(givenDate);
+    date.hour(defaultStartTime.hour);
+    date.minute(defaultStartTime.minute);
+    date = moment.tz(date, this.mainTimezone);
+    
+    return ({
+      date: date.toISOString(),
+      content: "",
+      type: "",
+    });
+  }
+
   // no date changes for now TODO add date changes
   updateWorkout(id, payload, callback) {
-    if (id !== "" && !(this.newWorkouts.includes(id))) {
-      this.workouts[id].payload = payload;
-      this.modified.push(id);
+    // "Modified" workouts are workouts that have already been pushed to DB.
+    if (id !== "") {
+      this.workouts[id] = payload;
+      if (!(this.modified.includes(id))) {
+        this.modified.push(id);
+      };
       callback(this.generateDisplayWorkouts());
-    } else { // For new workouts, there is no id
+    } else { 
         this.addWorkout(payload, callback);
     }
   }
 
   addWorkout(payload, callback) {
     const date = moment(payload.date).format(serverDateFormat);
-    const tempId = date; // I understand its redundant, but it clarifies the use of the date in the "ID" context below.
+    // Wrapping in a list in case this supports multiple workouts in one call in the future.
+    const workoutsToAdd = [{
+      owner: this.ownerID,
+      payload: payload,
+    }];
 
-    if (tempId in this.workouts) {
-      const old = this.workouts[tempId].payload;
-      const mergedPayload = {};
-      Object.keys(payload).forEach(k => {
-        mergedPayload[k] = payload[k] === "" ? old[k] : payload[k];
-      });
-      this.workouts[tempId] = {payload: mergedPayload};
-    } else {
-      this.workouts[tempId] = {payload: payload};
-    }
-    
-    this.dates[date] = tempId; 
-    this.newWorkouts.push(tempId);
-
-    callback(this.generateDisplayWorkouts());
+    axios.post(dbAddress + "addworkouts", {"toAdd": workoutsToAdd})
+    .then(res => {
+      console.log(res.data);
+      const newWorkoutId = res.data.id;
+      this.workouts[newWorkoutId] = payload;
+      if (date in this.dates) {
+        this.dates[date].push(newWorkoutId);
+      } else {
+        this.dates[date] = [newWorkoutId];
+      };
+      
+      callback(this.generateDisplayWorkouts(), newWorkoutId);
+    });
   }
 
   syncToDB(callback) {
+    // TODO do these still need to be deduped?
     const modified = [...new Set(this.modified)]; // Dedup the list
-    const newWorkouts = [...new Set(this.newWorkouts)]; // Dedup the list
-    let workoutsToUpdate = modified.map(x => {
-      let res = JSON.parse(JSON.stringify(this.workouts[x]));
-      res.id = x;
+    const workoutsToUpdate = modified.map(x => {
+      let res = {};
+      res.payload = this.workouts[x];
       res.owner = this.ownerID;
+      res.id = x;
       return res;
-    });
-    let workoutsToAdd = newWorkouts.map(x => {
-      return {
-        owner: this.ownerID,
-        payload: this.workouts[x].payload,
-      }
     });
     
     if (workoutsToUpdate.length > 0) {
@@ -130,16 +153,7 @@ class WorkoutHandler {
           this.modified = [];
           callback(this.generateDisplayWorkouts());
         });
-    }
-   
-    if (workoutsToAdd.length > 0) {
-      axios.post(dbAddress + "addworkouts", {"toAdd": workoutsToAdd})
-      .then(res => {
-        console.log(res.data);
-        this.newWorkouts = [];
-        callback(this.generateDisplayWorkouts());
-      });
-    }
+    };
 
     //TODO this should then repull from DB to keep db and FE in sync
   }
@@ -153,12 +167,14 @@ class WorkoutHandler {
         if (response) {
           response.data.forEach(workout => {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
-            this.workouts[workout.id] = {
-              payload: workout.payload,
-            }
+            this.workouts[workout.id] = workout.payload;
             
             const formattedDate = moment(workout.payload.date).format(serverDateFormat);
-            this.dates[formattedDate] = workout.id;
+            if (formattedDate in this.dates) {
+              this.dates[formattedDate].push(workout.id);
+            } else {
+              this.dates[formattedDate] = [workout.id];
+            }
           });
           callback(this.generateDisplayWorkouts());
         }
@@ -167,21 +183,29 @@ class WorkoutHandler {
 
   generateDisplayWorkouts() {
     let res = {};
-    Object.keys(this.dates).forEach((key,idx) => {
-      res[key] = {
-        payload: this.workouts[this.dates[key]].payload,
-        id: this.dates[key],
-      }
+    Object.keys(this.dates).forEach((date, idx) => {
+      const workoutsOnDate = [];
+      this.dates[date].forEach((workoutId) => {
+        workoutsOnDate.push({payload: this.workouts[workoutId], id: workoutId});
+      });
+
+      res[date] = workoutsOnDate;
     });
 
     return res;
   }
 
+  getWorkoutById(id) {
+    return this.workouts[id];
+  }
 }
 
 class MainPanel extends React.Component {
   constructor(props) {
     super(props);
+
+    // This has to come before this.state is set. I don't know why.
+    this.toggleAddWorkoutModule = this.toggleAddWorkoutModule.bind(this);
 
     this.state = {
       currentMonth: new MonthHandler(),
@@ -190,15 +214,22 @@ class MainPanel extends React.Component {
       ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
       name: "",
       defaultView: defaultView.CALENDAR,
+      mainTimezone: "America/Los_Angeles",
       startingDayOfWeek: 0,
       countdownConfig: {
         deadline: moment().format(serverDateFormat)
       },
+      addWorkoutModuleConfig: {
+        showingAddWorkoutModule: false,
+        workoutId: "",
+        workoutDate: "",
+      }
     }
   }
 
   componentDidMount() {
     this.state.workoutHandler.setOwnerID(this.state.ownerID);
+    this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
     this.populateUser(this.populateWorkouts.bind(this));
   }
 
@@ -220,6 +251,7 @@ class MainPanel extends React.Component {
         this.setState({
           "name": response.data.name,
           "defaultView": response.data.config.default_view,
+          "mainTimezone": response.data.config.mainTimezone,
           "countdownConfig": response.data.countdownConfig,
           "startingDayOfWeek": response.data.config.startingDayOfWeek,
         });
@@ -244,8 +276,16 @@ class MainPanel extends React.Component {
   }
   
   updateDayContent(id, payload) {
-    this.state.workoutHandler.updateWorkout(id, payload, workouts => {
-      this.setState({workouts: workouts});
+    this.state.workoutHandler.updateWorkout(id, payload, (workouts, newWorkoutId = "") => {
+      const newState = {workouts: workouts};
+      if (newWorkoutId !== "") {
+        // Clicking the "add workout" button won't trigger the opening of the AWM.
+        // The AWM is opened here once the workout has been created in DB.
+        newState.addWorkoutModuleConfig = { ...this.state.addWorkoutModuleConfig};
+        newState.addWorkoutModuleConfig.workoutId = newWorkoutId;
+        newState.addWorkoutModuleConfig.showingAddWorkoutModule = true;
+      }
+      this.setState(newState);
     });
   }
 
@@ -253,252 +293,81 @@ class MainPanel extends React.Component {
     this.state.workoutHandler.syncToDB(workouts => this.setState({workouts: workouts}));
   }
 
-  generateHeaderDayLabels() {
-    let daysOfWeek = [];
-    let dayFormatting = "ddd"; // ddd = Mon | dddd = Monday 
-    for (let i = 0; i < 14; i++) {
-      // Order: Sun --> Sat
-      daysOfWeek.push(moment().day(i % 7).format(dayFormatting));
-    }
-    daysOfWeek = daysOfWeek.slice(this.state.startingDayOfWeek, this.state.startingDayOfWeek + 7);
-
-    const dayLabels = daysOfWeek.map((value, index) => {
-      return (<span key={value}><h1>{value}</h1></span>);
-    });
-
-    return dayLabels;
+  toggleAddWorkoutModule(date="", id="") {
+    let newState = {
+      showingAddWorkoutModule: !this.state.addWorkoutModuleConfig.showingAddWorkoutModule
+    };
+    
+    // If date is given, we're opening the module, and must populate the payload.
+    if (date !== "") {
+      // If no ID, we're creating a new workout.
+      // Trigger the creation first on DB first, then populate the module with the resulting (empty) payload.
+      if (id === "" ) {
+        this.updateDayContent(id, this.state.workoutHandler.generateEmptyPayload(date));
+        // Don't update AWMC state to show the module yet -- wait for object to be created in DB and FE to update.
+        // The update function will set AWMC to show.
+      } else {
+        newState.workoutId = id;
+        newState.showingAddWorkoutModule = true; // Override in case the module is already open and a new date is selected
+        this.setState({addWorkoutModuleConfig: newState});
+      };
+    };
   }
   
   render() {
     const currentMonth = this.state.currentMonth;
     const alternateDisplayMode = this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR;
+    const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
 
-    let content =         
-      <div>
-        <Calendar 
-          currentMonth={currentMonth.getMonthInfo()}
-          decrementMonthHandler={() => this.decrementMonth()}
-          incrementMonthHandler={() => this.incrementMonth()}  
-          workouts={this.state.workouts}
-          updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
-          deadline={this.state.countdownConfig.deadline}
-          defaultView={this.state.defaultView}
-          startingDayOfWeek={this.state.startingDayOfWeek}
-        />
+    let newWorkoutModulePayload;
+    if (this.state.addWorkoutModuleConfig.showingAddWorkoutModule 
+      && this.state.addWorkoutModuleConfig.workoutId !== "") {
+        // Showing existing workout
+      newWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutId);
+    };
+    // Need failure case
+
+    const content =         
+      <div style={{display: "flex"}}>
+          <NewWorkoutModule
+            show={addWorkoutModuleConfig.showingAddWorkoutModule}
+            onClose={() => this.toggleAddWorkoutModule("", "")}
+            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
+            payload={newWorkoutModulePayload}
+            id={addWorkoutModuleConfig.workoutId}
+          />
+        <div style={{flex: "1"}}>
+          <Calendar 
+            currentMonth={currentMonth.getMonthInfo()}
+            decrementMonthHandler={() => this.decrementMonth()}
+            incrementMonthHandler={() => this.incrementMonth()} 
+            addNewWorkoutHandler={(date, id) => this.toggleAddWorkoutModule(date, id)}
+            workouts={this.state.workouts}
+            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
+            deadline={this.state.countdownConfig.deadline}
+            defaultView={this.state.defaultView}
+            startingDayOfWeek={this.state.startingDayOfWeek}
+          />
+        </div>
       </div>;
 
     return (
       <div>
         <h1>{"Hi " + this.state.name + "!"}</h1>
         <button onClick={() => this.switchDisplayModes()}>{"Switch to " + alternateDisplayMode + " mode"}</button>
-        <div className="dayLabels">
-          {this.generateHeaderDayLabels()}
-        </div>
-        <button onClick={() => this.updateDB()}><h2>Save</h2></button>
+        <button onClick={() => this.updateDB()}>Save Edits</button>
         {content}
       </div>
     );
   }
 }
 
-class Calendar extends React.Component {
-  fillDayArray() {
-    let firstDisplayedDay;
-    let totalDisplayedDays;
-    let fullArrayLength;
-    let month;
-    const startingDayOfWeek = this.props.startingDayOfWeek;
-    
-    if (this.props.defaultView === defaultView.CALENDAR) {
-      month = this.props.currentMonth.month;
-      const startOfMonth = this.props.currentMonth.startingDayOfWeek;
-      const daysToStartOfWeek = startingDayOfWeek <= startOfMonth 
-                                ? startOfMonth - startingDayOfWeek 
-                                : (7 - startingDayOfWeek) + startOfMonth;
-      firstDisplayedDay = daysToStartOfWeek;
-      totalDisplayedDays = this.props.currentMonth.totalDays;
-    } else {
-      month = moment().format(serverDateFormat);
-      // This was Victor's version of the below, where A is the start of week and B is "today": abs(min((B-(A-7))*sgn(B-A), abs(B-A))
-      const today = Number(moment().format("d"));
-      const daysToStartOfWeek = startingDayOfWeek <= today 
-                                ? today - startingDayOfWeek 
-                                : (7 - startingDayOfWeek) + today;
-
-      firstDisplayedDay = daysToStartOfWeek;
-      const deadlineObj = moment(this.props.deadline);
-      totalDisplayedDays = Math.ceil(moment.duration(deadlineObj.diff(moment())).asDays()) + 1; // + 1 b/c we want to include the deadline day, 
-    }
-    
-    fullArrayLength = firstDisplayedDay + totalDisplayedDays; // Account for padding in the beginning
-    fullArrayLength = fullArrayLength + (fullArrayLength % 7 === 0 ? 0 : 7 - fullArrayLength % 7); // Pad extra days at the end
-    let dayArray = Array(fullArrayLength).fill({}); 
-
-    const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
-    for (let i = firstDisplayedDay; i < firstDisplayedDay + totalDisplayedDays; i++) {
-      const date = currentDay.format(serverDateFormat);
-      const payload = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].payload : null;
-      const id = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date].id : null;
-      dayArray.splice(i, 1, {
-        date: date,
-        payload: payload,
-        id: id,
-      });
-
-      currentDay.add(1, "day");
-    } 
-
-    return dayArray;
-  }
-
-  render() {
-    // Split days into weeks
-    const dayArray = this.fillDayArray();
-    const weeks = [];
-
-    for (let i = 0; i < dayArray.length; i += 7) {
-      weeks.push(dayArray.slice(i, i + 7));
-    }
-
-    const weekElements = weeks.map((value, index) => {
-      return (
-        <div key={index.toString()}>
-          <WeekDisplay days={value} updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}/>
-        </div>
-      );
-    });
-
-    return (
-      <div>
-        {this.props.defaultView === defaultView.CALENDAR ? 
-          <CalendarMonthControl 
-            currentMonth={this.props.currentMonth}
-            decrementMonthHandler={() => this.props.decrementMonthHandler()}
-            incrementMonthHandler={() => this.props.incrementMonthHandler()}
-          />
-          : null
-        }
-        {weekElements}
-      </div>
-    );
-    
-  }
-}
-
-class CalendarMonthControl extends React.Component {
-  render() {
-
-    return (
-      <div>
-        <h1>{moment(this.props.currentMonth.month).format("MMMM YYYY")}</h1>
-        <div>
-          <button onClick={() => this.props.decrementMonthHandler()}>{"<"}</button>
-          <button onClick={() => this.props.incrementMonthHandler()}>{">"}</button>
-        </div>
-      </div>
-    );
-  }
-}
-
-class WeekDisplay extends React.Component {
-  render() {
-    const days = this.props.days.slice()
-    const dayCells = days.map((value, index) => {
-      if (isEmptyObject(value)) {
-        // Still have to return a div to keep flexbox spacing correct for the whole week.
-        return <div className="dayCell" key={index}></div>;
-      }
-      return (
-        <div className="dayCell" key={index}>
-          <DayCell 
-            // From the react gods on github: 
-            // An input should be either uncontrolled (value always undef/null) or controlled (value is a string, so it should be an empty string rather than null) for its entire lifetime.
-            // This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
-            date={value ? value.date : ""}
-            payload={value.payload ? value.payload : {"content": "", "type": "", "date": ""}} 
-            id={value.id ? value.id : ""}
-            updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
-          />
-        </div>
-      );
-    });
-
-    return (
-      <div className="weekDisplay">
-        {dayCells}
-      </div>
-    );
-  }
-}
-
-class DayCell extends React.Component {
-  constructor(props) {
-    super(props);
-
-    this.handleWorkoutContentChange = this.handleWorkoutContentChange.bind(this);
-    this.handleWorkoutTypeChange = this.handleWorkoutTypeChange.bind(this);
-  }
-
-  timeSetter(timeString) {
-    // TODO I have no idea how to address timezones. THis is a problem for later.
-    let time = moment(timeString);
-    time.hour(8);
-    time.minute(0);
-    return time;
-  }
   
-  handleWorkoutContentChange(event) {
-    const newPayload = {
-      type: this.props.payload.type,
-      content: event.target.value,
-      date: this.props.id === "" ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
-    }
-    this.props.updateDayContentFunc(this.props.id, newPayload);
-  }
-
-  handleWorkoutTypeChange(event) {
-    const newPayload = {
-      type: event.target.value,
-      content: this.props.payload.content,
-      date: this.props.id === "" ? this.timeSetter(this.props.date).toISOString() : this.props.payload.date,
-    }
-
-    this.props.updateDayContentFunc(this.props.id, newPayload);
-  }
-
-  generateDisplayDate() {
-    if (this.props.date === "") {
-      return null;
-    }
-    return moment(this.props.date).format("M/DD/YY");
-  }
-
-  render() {
-    let contentField;
-    // if (this.props.payload.content) {
-    //   contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
-    // } else {
-    //   // Prevents displaying an empty text box on empty days
-    //   contentField = null;
-    // }
-    contentField = <textarea value={this.props.payload.content} onChange={this.handleWorkoutContentChange}/>;
-
-    return (
-      <div>
-        <h2>{this.generateDisplayDate()}</h2>
-        <textarea value={this.props.payload.type} onChange={this.handleWorkoutTypeChange}/> {/* don't forget to style this lol*/}
-        {contentField}
-      </div>
-    );
-  }
-}
-
 function App() {
   return (
     <Router>
       <Route path="/" exact component={MainPanel}/>
     </Router>
-    
   );
 }
 

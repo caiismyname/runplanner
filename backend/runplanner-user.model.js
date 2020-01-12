@@ -12,7 +12,8 @@ let User = new Schema({
         defaultView: {
             type: String,
             enum: ["calendar", "countdown"]
-        }
+        },
+        mainTimezone: String,
     },
     countdownConfig: {
         deadline: {
