@@ -1,9 +1,10 @@
 import React from 'react';
 import './App.css';
-import { BrowserRouter as Router, Route } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter as Router, Route } from 'react-router-dom';
+import axios from 'axios';
 
-import NewWorkoutModule from "./NewWorkoutModal";
+import {UserContext} from './user-context';
+import NewWorkoutModule from './NewWorkoutModal';
 import Calendar from "./CalendarDisplay";
 
 var moment = require('moment-timezone');
@@ -211,8 +212,9 @@ class MainPanel extends React.Component {
       currentMonth: new MonthHandler(),
       workoutHandler: new WorkoutHandler(),
       workouts: {},
-      ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
-      name: "",
+      // ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
+      // ownerID: "",
+      // name: "",
       defaultView: defaultView.CALENDAR,
       mainTimezone: "America/Los_Angeles",
       startingDayOfWeek: 0,
@@ -228,7 +230,7 @@ class MainPanel extends React.Component {
   }
 
   componentDidMount() {
-    this.state.workoutHandler.setOwnerID(this.state.ownerID);
+    this.state.workoutHandler.setOwnerID(this.context.ownerID);
     this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
     this.populateUser(this.populateWorkouts.bind(this));
   }
@@ -246,10 +248,10 @@ class MainPanel extends React.Component {
   }
 
   populateUser(callback) {
-    axios.get(dbAddress + "getuser/" + this.state.ownerID)
+    axios.get(dbAddress + "getuser/" + this.context.ownerID)
       .then(response => {
         this.setState({
-          "name": response.data.name,
+          // "name": response.data.name,
           "defaultView": response.data.config.default_view,
           "mainTimezone": response.data.config.mainTimezone,
           "countdownConfig": response.data.countdownConfig,
@@ -353,7 +355,7 @@ class MainPanel extends React.Component {
 
     return (
       <div>
-        <h1>{"Hi " + this.state.name + "!"}</h1>
+        <h1>{"Hi " + this.context.ownerName + "!"}</h1>
         <button onClick={() => this.switchDisplayModes()}>{"Switch to " + alternateDisplayMode + " mode"}</button>
         <button onClick={() => this.updateDB()}>Save Edits</button>
         {content}
@@ -362,6 +364,7 @@ class MainPanel extends React.Component {
   }
 }
 
+MainPanel.contextType = UserContext;
   
 function App() {
   return (
