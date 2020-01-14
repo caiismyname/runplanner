@@ -3,7 +3,8 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import {UserContext} from './user-context';
+import {UserContext, useUser} from './user-context';
+import LoginPage from './LoginPage';
 import NewWorkoutModule from './NewWorkoutModal';
 import Calendar from "./CalendarDisplay";
 
@@ -69,7 +70,6 @@ class MonthHandler {
 class WorkoutHandler {
   // Initialize to empty since MainPanel won't have pulled from DB yet when WorkoutHandler is constructed.
   constructor(ownerID = "", mainTimezone = "") {
-    this.ownerID = ownerID;
     this.workouts = {}; // Key = MongoID, Value = workout details
     this.dates = {}; // Key = date, Value = MongID (to use as reference into above dict)
     this.modified = [];
@@ -212,9 +212,6 @@ class MainPanel extends React.Component {
       currentMonth: new MonthHandler(),
       workoutHandler: new WorkoutHandler(),
       workouts: {},
-      // ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
-      // ownerID: "",
-      // name: "",
       defaultView: defaultView.CALENDAR,
       mainTimezone: "America/Los_Angeles",
       startingDayOfWeek: 0,
@@ -367,9 +364,13 @@ class MainPanel extends React.Component {
 MainPanel.contextType = UserContext;
   
 function App() {
+  // Decide to show login page vs. logged in page.
+  const user = useUser();
+  const component = user ? MainPanel : LoginPage;
+
   return (
     <Router>
-      <Route path="/" exact component={MainPanel}/>
+      <Route path="/" exact component={component}/>
     </Router>
   );
 }
