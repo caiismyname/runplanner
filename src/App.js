@@ -3,7 +3,8 @@ import './App.css';
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
 
-import LoginPage from './LoginPage';
+import LoginPage from "./LoginPage";
+import NewUserOnboarding from "./NewUserOnboarding";
 import NewWorkoutModule from "./NewWorkoutModal";
 import Calendar from "./CalendarDisplay";
 
@@ -15,10 +16,6 @@ const defaultView = {
   CALENDAR: "calendar",
   COUNTDOWN: "countdown",
 };
-
-function isEmptyObject(obj) {
-  return Object.entries(obj).length === 0 && obj.constructor === Object;
-}
 
 class MonthHandler {
   // Defaults to current month if none is given
@@ -54,7 +51,7 @@ class MonthHandler {
 
   getMonthEnd() {
     const monthInfo = this.getMonthInfo();
-    return monthInfo.month + "-" + monthInfo.totalDisplayedDays;
+    return monthInfo.month + "-" + monthInfo.totalDays;
   }
 
   incrementMonth() {
@@ -68,16 +65,16 @@ class MonthHandler {
 
 class WorkoutHandler {
   // Initialize to empty since MainPanel won't have pulled from DB yet when WorkoutHandler is constructed.
-  constructor(ownerID = "", mainTimezone = "") {
-    this.ownerID = ownerID;
+  constructor(userID = "", mainTimezone = "") {
+    this.userID = userID;
     this.workouts = {}; // Key = MongoID, Value = workout details
     this.dates = {}; // Key = date, Value = MongID (to use as reference into above dict)
     this.modified = [];
     this.mainTimezone = mainTimezone;
   }
 
-  setOwnerID(id) {
-    this.ownerID = id;
+  setuserID(id) {
+    this.userID = id;
   }
 
   setMainTimezone(timezone) {
@@ -117,7 +114,7 @@ class WorkoutHandler {
     const date = moment(payload.date).format(serverDateFormat);
     // Wrapping in a list in case this supports multiple workouts in one call in the future.
     const workoutsToAdd = [{
-      owner: this.ownerID,
+      owner: this.userID,
       payload: payload,
     }];
 
@@ -142,7 +139,7 @@ class WorkoutHandler {
     const workoutsToUpdate = modified.map(x => {
       let res = {};
       res.payload = this.workouts[x];
-      res.owner = this.ownerID;
+      res.owner = this.userID;
       res.id = x;
       return res;
     });
@@ -161,7 +158,7 @@ class WorkoutHandler {
 
   pullWorkoutsFromDB(startDate, endDate, callback) {
     axios.get(dbAddress + "getworkoutsforownerfordaterange/" 
-      + this.ownerID + "/" 
+      + this.userID + "/" 
       + startDate + "/"
       + endDate)
       .then(response => {
@@ -208,13 +205,12 @@ class MainPanel extends React.Component {
     // This has to come before this.state is set. I don't know why.
     this.toggleAddWorkoutModule = this.toggleAddWorkoutModule.bind(this);
     this.signinHandler = this.signinHandler.bind(this);
+    this.onboardingHandler = this.onboardingHandler.bind(this);
 
     this.state = {
-      userIsLoaded: false,
-      currentMonth: new MonthHandler(),
-      workoutHandler: new WorkoutHandler(),
-      workouts: {},
-      ownerID: "",
+      userIsLoaded: false, // Has the user logged in via Google OAuth?
+      userExists: false, // Is the Google userID in our DB?
+      userID: "",
       name: "",
       email: "",
       defaultView: defaultView.CALENDAR,
@@ -227,26 +223,54 @@ class MainPanel extends React.Component {
         showingAddWorkoutModule: false,
         workoutId: "",
         workoutDate: "",
-      }
+      },
+      currentMonth: new MonthHandler(),
+      workoutHandler: new WorkoutHandler(),
+      workouts: {},
     }
   }
 
   componentDidMount() {
-    this.state.workoutHandler.setOwnerID(this.state.ownerID);
-    this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
-    this.populateUser(this.populateWorkouts.bind(this));
+    this.populateUser();
+  }
+
+  onboardingHandler(startingDayOfWeek, defaultView, mainTimezone) {
+    const userId = this.state.userID;
+    axios.post(dbAddress + "adduser", 
+      {
+        "_id": userId,
+        "config": {
+          "startingDayOfWeek": startingDayOfWeek,
+          "defaultView": defaultView,
+          "mainTimezone": mainTimezone,
+        },
+        "countdownConfig": {
+          "deadline": null,
+        },
+      }
+    )
+    .then(res => {
+      this.setState({userExists: true}, () => this.populateUser());
+    });
   }
 
   signinHandler(isSuccess, googleResponse) {
     if (isSuccess) {
       const profile = googleResponse.getBasicProfile();
-      this.setState({
-        ownerID: profile.getId(),
+      const userID = profile.getId();
+      const newState = {
+        userID: userID,
         name: profile.getName(),
         email: profile.getEmail(),
         userIsLoaded: true,
+      };
+
+      axios.post(dbAddress + "checkuser", {"id": userID})
+      .then(res => {
+        newState["userExists"] = res.data.userExists;
+        this.setState(newState, () => this.populateUser());
       });
-    }
+    };
   }
 
   decrementMonth() {
@@ -261,34 +285,40 @@ class MainPanel extends React.Component {
     this.setState({defaultView: this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR});
   }
 
-  populateUser(callback) {
-    axios.get(dbAddress + "getuser/" + this.state.ownerID)
-      .then(response => {
-        this.setState({
-          "name": response.data.name,
-          "defaultView": response.data.config.default_view,
-          "mainTimezone": response.data.config.mainTimezone,
-          "countdownConfig": response.data.countdownConfig,
-          "startingDayOfWeek": response.data.config.startingDayOfWeek,
+  populateUser() {
+    if (this.state.userIsLoaded && this.state.userExists) {
+      axios.get(dbAddress + "getuser/" + this.state.userID)
+        .then(response => {
+          this.setState({
+            "defaultView": response.data.config.defaultView,
+            "mainTimezone": response.data.config.mainTimezone,
+            "countdownConfig": response.data.countdownConfig,
+            "startingDayOfWeek": response.data.config.startingDayOfWeek,
+          });
+          
+          this.state.workoutHandler.setuserID(this.state.userID);
+          this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
+          this.populateWorkouts();
         });
-        
-        // Callback used to ensure config data is in place before populating workouts
-        callback();
-      })
+      };
   }
 
   populateWorkouts() {
     let startDate;
     let endDate;
-    if (this.props.defaultView === defaultView.CALENDAR) {
+    if (this.state.defaultView === defaultView.CALENDAR) {
       startDate = this.state.currentMonth.getMonthStart();
-      endDate = this.state.currentMonth.getMonthEnd()
+      endDate = this.state.currentMonth.getMonthEnd();
     } else { // Countdown mode
       startDate = moment().format(serverDateFormat);
       endDate = this.state.countdownConfig.deadline;
     }
 
-    this.state.workoutHandler.pullWorkoutsFromDB(startDate, endDate, (workouts) => this.setState({workouts: workouts}));
+    this.state.workoutHandler.pullWorkoutsFromDB(
+      startDate, 
+      endDate, 
+      (workouts) => this.setState({workouts: workouts})
+    );
   }
   
   updateDayContent(id, payload) {
@@ -335,8 +365,15 @@ class MainPanel extends React.Component {
       return(<LoginPage signinHandler={this.signinHandler}/>);
     };
     
+    if (!this.state.userExists) {
+      return(<NewUserOnboarding onboardingHandler={this.onboardingHandler}/>);
+    };
+
     const currentMonth = this.state.currentMonth;
-    const alternateDisplayMode = this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR;
+    const alternateDisplayMode = 
+      this.state.defaultView === defaultView.CALENDAR 
+      ? defaultView.COUNTDOWN
+      : defaultView.CALENDAR;
     const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
 
     let newWorkoutModulePayload;
@@ -374,8 +411,14 @@ class MainPanel extends React.Component {
     return (
       <div>
         <h1>{"Hi " + this.state.name + "!"}</h1>
-        <button onClick={() => this.switchDisplayModes()}>{"Switch to " + alternateDisplayMode + " mode"}</button>
-        <button onClick={() => this.updateDB()}>Save Edits</button>
+
+        <button onClick={() => this.switchDisplayModes()}>
+          {"Switch to " + alternateDisplayMode + " mode"}
+        </button>
+        <button onClick={() => this.updateDB()}>
+          Save Edits
+        </button>
+
         {content}
       </div>
     );

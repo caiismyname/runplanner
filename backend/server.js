@@ -44,10 +44,10 @@ runplannerRoutes.route("/adduser").post(function(req, res) {
         .catch(err => {res.status(400).send("Adding new user failed")});
 });
 
-runplannerRoutes.route("/deleteuser/:id").post(function(req, res) {
-    proceedIfUserExists(req.params.id,
+runplannerRoutes.route("/deleteuser").post(function(req, res) {
+    proceedIfUserExists(req.body.id,
         () => {
-            Users.deleteOne({_id: req.params.id})
+            Users.deleteOne({_id: req.body.id})
                 .then(res.status(200).json("User deleted successfully"))
                 .catch(err => {res.status(400).send("Deleting user failed")});
         }, 
@@ -55,12 +55,18 @@ runplannerRoutes.route("/deleteuser/:id").post(function(req, res) {
     );
 })
 
-runplannerRoutes.route("/updateuser/:id").post(function(req, res) {
-    Users.findById(req.params.id, function(err, user) {
+runplannerRoutes.route("/checkuser").post(function(req, res) {
+    proceedIfUserExists(req.body.id,
+        () => {res.status(200).json({"userExists": true})},
+        () => {res.status(200).json({"userExists": false})},
+    );
+})
+
+runplannerRoutes.route("/updateuser").post(function(req, res) {
+    Users.findById(req.body.id, function(err, user) {
         if (!user) {
             res.status(404).send("User not found");
         } else {
-            user.name = req.body.name;
             user.config = req.body.config;
             user.countdownConfig = req.body.countdownConfig;
 
@@ -171,20 +177,23 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
 runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
     Workouts.find(
         { 
-            "payload.date": { $gte: new Date(req.params.gtedate), $lte: new Date(req.params.ltedate)},
+            "payload.date": { 
+                $gte: new Date(req.params.gtedate), 
+                $lte: new Date(req.params.ltedate)
+            },
             "owner": req.params.id
         },
         (err, items) => {
             if (err) {
                 console.log(err);
             } else {
-                let timeFormattedItems = items.map(workout => { 
+                let formattedItems = items.map(workout => { 
                     return {  
                         "payload": workout.payload,
                         "id": workout._id,
                     }
                 });
-                res.json(timeFormattedItems);
+                res.json(formattedItems);
             }
         }
     );
