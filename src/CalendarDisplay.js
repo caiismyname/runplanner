@@ -177,6 +177,7 @@ class DayCell extends React.Component {
             this.props.payloads.forEach((workout) => {
                 content.push(
                     <div 
+                        key={workout.id}
                         style={{border: "1px solid green"}} 
                         onClick={() => this.props.addNewWorkoutHandler(workout.payload.date, workout.id)}
                     >
