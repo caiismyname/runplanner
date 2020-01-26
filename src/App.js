@@ -16,6 +16,7 @@ const defaultView = {
   CALENDAR: "calendar",
   COUNTDOWN: "countdown",
 };
+const gClientID = "953053521176-om8kfj3ei7g0pm6dq6cohhhb7ucnhaje.apps.googleusercontent.com";
 
 class MonthHandler {
   // Defaults to current month if none is given
@@ -208,6 +209,7 @@ class MainPanel extends React.Component {
     this.onboardingHandler = this.onboardingHandler.bind(this);
 
     this.state = {
+      pendingUserLoading: true,
       userIsLoaded: false, // Has the user logged in via Google OAuth?
       userExists: false, // Is the Google userID in our DB?
       userID: "",
@@ -231,7 +233,49 @@ class MainPanel extends React.Component {
   }
 
   componentDidMount() {
+    const handler = this.signinHandler.bind(this);
+
+    window.gapi.load('auth2', function() {
+      window.gapi.auth2.init({client_id: gClientID}).then(
+        (googleAuth) => {
+          // unsure if this listner works / is necessary
+          // googleAuth.isSignedIn.listen(isSignedIn => {
+          //   handler(isSignedIn, googleAuth.currentUser.get());
+          // });
+
+          if (googleAuth.isSignedIn.get()) {
+            handler(true, googleAuth.currentUser.get());
+          } else {
+            handler(false, null);
+          }
+        },
+        (err) => {console.log(err)} 
+      );
+    });
+
     this.populateUser();
+  }
+  
+  signinHandler(isSuccess, googleAuth) {
+    if (isSuccess) {
+      const profile = googleAuth.getBasicProfile();
+      const userID = profile.getId();
+      const newState = {
+        userID: userID,
+        name: profile.getName(),
+        email: profile.getEmail(),
+        userIsLoaded: true,
+        pendingUserLoading: false,
+      };
+
+      axios.post(dbAddress + "checkuser", {"id": userID})
+      .then(res => {
+        newState["userExists"] = res.data.userExists;
+        this.setState(newState, () => this.populateUser());
+      });
+    } else {
+      this.setState({pendingUserLoading: false, userIsLoaded: false});
+    };
   }
 
   onboardingHandler(startingDayOfWeek, defaultView, mainTimezone) {
@@ -252,25 +296,6 @@ class MainPanel extends React.Component {
     .then(res => {
       this.setState({userExists: true}, () => this.populateUser());
     });
-  }
-
-  signinHandler(isSuccess, googleResponse) {
-    if (isSuccess) {
-      const profile = googleResponse.getBasicProfile();
-      const userID = profile.getId();
-      const newState = {
-        userID: userID,
-        name: profile.getName(),
-        email: profile.getEmail(),
-        userIsLoaded: true,
-      };
-
-      axios.post(dbAddress + "checkuser", {"id": userID})
-      .then(res => {
-        newState["userExists"] = res.data.userExists;
-        this.setState(newState, () => this.populateUser());
-      });
-    };
   }
 
   decrementMonth() {
@@ -361,6 +386,10 @@ class MainPanel extends React.Component {
   }
   
   render() {
+    if(this.state.pendingUserLoading) {
+      return(null);
+    }
+
     if (!this.state.userIsLoaded) {
       return(<LoginPage signinHandler={this.signinHandler}/>);
     };
