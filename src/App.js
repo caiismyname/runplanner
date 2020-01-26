@@ -3,6 +3,7 @@ import './App.css';
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import axios from "axios";
 
+import LoginPage from './LoginPage';
 import NewWorkoutModule from "./NewWorkoutModal";
 import Calendar from "./CalendarDisplay";
 
@@ -206,13 +207,16 @@ class MainPanel extends React.Component {
 
     // This has to come before this.state is set. I don't know why.
     this.toggleAddWorkoutModule = this.toggleAddWorkoutModule.bind(this);
+    this.signinHandler = this.signinHandler.bind(this);
 
     this.state = {
+      userIsLoaded: false,
       currentMonth: new MonthHandler(),
       workoutHandler: new WorkoutHandler(),
       workouts: {},
-      ownerID: "5ded9ddfb2e5872a93e21989", // TODO mocking
+      ownerID: "",
       name: "",
+      email: "",
       defaultView: defaultView.CALENDAR,
       mainTimezone: "America/Los_Angeles",
       startingDayOfWeek: 0,
@@ -231,6 +235,18 @@ class MainPanel extends React.Component {
     this.state.workoutHandler.setOwnerID(this.state.ownerID);
     this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
     this.populateUser(this.populateWorkouts.bind(this));
+  }
+
+  signinHandler(isSuccess, googleResponse) {
+    if (isSuccess) {
+      const profile = googleResponse.getBasicProfile();
+      this.setState({
+        ownerID: profile.getId(),
+        name: profile.getName(),
+        email: profile.getEmail(),
+        userIsLoaded: true,
+      });
+    }
   }
 
   decrementMonth() {
@@ -315,6 +331,10 @@ class MainPanel extends React.Component {
   }
   
   render() {
+    if (!this.state.userIsLoaded) {
+      return(<LoginPage signinHandler={this.signinHandler}/>);
+    };
+    
     const currentMonth = this.state.currentMonth;
     const alternateDisplayMode = this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR;
     const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
