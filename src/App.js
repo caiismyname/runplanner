@@ -1,7 +1,7 @@
 import React from 'react';
 import './App.css';
-import { BrowserRouter as Router, Route } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter as Router, Route } from 'react-router-dom';
+import axios from 'axios';
 
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
@@ -454,11 +454,16 @@ class MainPanel extends React.Component {
   }
 }
 
+MainPanel.contextType = UserContext;
   
 function App() {
+  // Decide to show login page vs. logged in page.
+  const user = useUser();
+  const component = user ? MainPanel : LoginPage;
+
   return (
     <Router>
-      <Route path="/" exact component={MainPanel}/>
+      <Route path="/" exact component={component}/>
     </Router>
   );
 }
