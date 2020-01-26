@@ -453,17 +453,11 @@ class MainPanel extends React.Component {
     );
   }
 }
-
-MainPanel.contextType = UserContext;
   
 function App() {
-  // Decide to show login page vs. logged in page.
-  const user = useUser();
-  const component = user ? MainPanel : LoginPage;
-
   return (
     <Router>
-      <Route path="/" exact component={component}/>
+      <Route path="/" exact component={MainPanel}/>
     </Router>
   );
 }
