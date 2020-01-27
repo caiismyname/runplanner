@@ -12,8 +12,6 @@ let Users = require("./runplanner-user.model");
 app.use(cors());
 app.use(bodyParser.json());
 
-let serverDateFormat = "YYYY-MM-DD";
-
 function proceedIfUserExists(id, successCallback, failureCallback) {
     Users.findOne({ _id: id }).select("_id").lean().then(result => {
         result ? successCallback() : failureCallback();

@@ -3,20 +3,13 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
+import {defaultView, serverDateFormat, dbAddress, gClientID} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
-import NewWorkoutModule from "./NewWorkoutModal";
+import NewWorkoutModule from "./NewWorkoutModule";
 import Calendar from "./CalendarDisplay";
 
 var moment = require('moment-timezone');
-
-const serverDateFormat = "YYYY-MM-DD";
-const dbAddress = "http://localhost:4000/runplannerDB/";
-const defaultView = {
-  CALENDAR: "calendar",
-  COUNTDOWN: "countdown",
-};
-const gClientID = "953053521176-om8kfj3ei7g0pm6dq6cohhhb7ucnhaje.apps.googleusercontent.com";
 
 class MonthHandler {
   // Defaults to current month if none is given
@@ -453,7 +446,7 @@ class MainPanel extends React.Component {
     );
   }
 }
-  
+
 function App() {
   return (
     <Router>

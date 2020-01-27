@@ -1,9 +1,13 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import GoogleLogin from 'react-google-login';
 
-const gClientID = "953053521176-om8kfj3ei7g0pm6dq6cohhhb7ucnhaje.apps.googleusercontent.com";
+import {gClientID} from './configs';
 
 class LoginPage extends React.Component {
+    static propTypes = {
+        "signinHandler": PropTypes.func.isRequired,
+    };
 
     render() {
         return(
