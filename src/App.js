@@ -6,7 +6,7 @@ import axios from 'axios';
 import {defaultView, serverDateFormat, dbAddress, gClientID} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
-import NewWorkoutModule from "./NewWorkoutModal";
+import NewWorkoutModule from "./NewWorkoutModule";
 import Calendar from "./CalendarDisplay";
 
 var moment = require('moment-timezone');
