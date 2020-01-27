@@ -1,18 +1,33 @@
 import React from 'react';
+import PropTypes from 'prop-types';
+import {defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType} from './configs';
 import './App.css';
-var moment = require('moment-timezone');
 
-const serverDateFormat = "YYYY-MM-DD";
-const defaultView = {
-    CALENDAR: "calendar",
-    COUNTDOWN: "countdown",
-  }
+var moment = require('moment-timezone');
   
 function isEmptyObject(obj) {
     return Object.entries(obj).length === 0 && obj.constructor === Object;
 }
 
 class Calendar extends React.Component {
+    static propTypes = {
+      currentMonth: PropTypes.shape({
+        "month": PropTypes.string,
+        "startingDayOfWeek": PropTypes.oneOf([0,1,2,3,4,5,6]),
+        "totalDays": PropTypes.oneOf([28,29,30,31]),
+      }).isRequired,
+      decrementMonthHandler: PropTypes.func.isRequired,
+      incrementMonthHandler: PropTypes.func.isRequired,
+      addNewWorkoutHandler: PropTypes.func.isRequired,
+      workouts: PropTypes.objectOf(
+        PropTypes.arrayOf(payloadWithIDPropType)
+      ).isRequired,
+      updateDayContentFunc: PropTypes.func.isRequired,
+      deadline: PropTypes.string,
+      defaultView: PropTypes.oneOf(Object.values(defaultView)),
+      startingDayOfWeek: PropTypes.oneOf([0,1,2,3,4,5,6]),
+    };
+  
     fillDayArray() {
       let firstDisplayedDay;
       let totalDisplayedDays;
@@ -116,9 +131,19 @@ class Calendar extends React.Component {
       );
       
     }
-  }
-  
+}
+
 class CalendarMonthControl extends React.Component {
+    static propTypes = {
+      currentMonth: PropTypes.shape({
+        "month": PropTypes.string,
+        "startingDayOfWeek": PropTypes.oneOf([0,1,2,3,4,5,6]),
+        "totalDays": PropTypes.oneOf([28,29,30,31]),
+      }).isRequired,
+      "decrementMonthHandler": PropTypes.func.isRequired,
+      "incrementMonthHandler": PropTypes.func.isRequired,
+    };
+    
     render() {
         return (
             <div>
@@ -133,6 +158,17 @@ class CalendarMonthControl extends React.Component {
 }
   
 class WeekDisplay extends React.Component {
+    static propTypes = {
+      "days": PropTypes.arrayOf(
+        PropTypes.shape({
+          "date": PropTypes.string,
+          "payloads": PropTypes.arrayOf(payloadWithIDPropType),
+        })
+      ).isRequired,
+      "updateDayContentFunc": PropTypes.func.isRequired,
+      "addNewWorkoutHandler": PropTypes.func.isRequired,
+    }; 
+
     render() {
       const days = this.props.days.slice()
       const dayCells = days.map((value, index) => {
@@ -164,11 +200,18 @@ class WeekDisplay extends React.Component {
 }
   
 class DayCell extends React.Component {
-    generateDisplayDate() {
+    static propTypes = {
+      "addNewWorkoutHandler": PropTypes.func.isRequired,
+      "updateDayContentFunc": PropTypes.func.isRequired,
+      "date": PropTypes.string.isRequired,
+      "payloads": PropTypes.arrayOf(payloadWithIDPropType).isRequired,
+    };
+  
+    generateDisplayDate() {
         if (this.props.date === "") {
           return null;
         }
-        return moment(this.props.date).format("M/DD/YY");
+        return moment(this.props.date).format(dateDisplayFormat);
     }
     
     render() {
@@ -206,6 +249,5 @@ class DayCell extends React.Component {
       );
     }
 }
-
 
 export default Calendar;

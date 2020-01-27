@@ -1,7 +1,11 @@
 import React from "react";
+import PropTypes from 'prop-types';
 
 class NewUserOnboarding extends React.Component {
-
+    static propTypes = {
+        "onboardingHandler": PropTypes.func.isRequired,
+    };
+    
     render() {
         return (
             <div>

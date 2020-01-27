@@ -1,19 +1,19 @@
 import React from 'react';
-// import PropTypes from 'prop-types';
+import PropTypes from 'prop-types';
+
+import {workoutFields, timeFields, dateDisplayFormat, payloadPropType} from './configs';
+
 var moment = require('moment-timezone');
 
-const workoutFields = {
-  TYPE: "type",
-  CONTENT: "content",
-  DATE: "date",
-};
-const TimeFields = {
-  HOUR: "hour",
-  "MINUTE": "minute",
-};
-const dateDisplayFormat = "M/DD/YY";
-
 class NewWorkoutModule extends React.Component {
+  static propTypes = {
+    "id": PropTypes.string.isRequired,
+    "onClose": PropTypes.func.isRequired,
+    "payload": payloadPropType,
+    "show": PropTypes.bool.isRequired,
+    "updateDayContentFunc": PropTypes.func,
+  };
+  
   constructor(props) {
     super(props);
     this.handleWorkoutChange = this.handleWorkoutChange.bind(this);
@@ -41,7 +41,7 @@ class NewWorkoutModule extends React.Component {
         <h2>Time</h2>
         <TimeEntry 
           date={this.props.payload.date}
-          callback={(newDateTime) => {
+          updateTimeCallback={(newDateTime) => {
             this.handleWorkoutChange(newDateTime, workoutFields.DATE);
           }}
         />
@@ -65,6 +65,11 @@ class NewWorkoutModule extends React.Component {
 }
 
 class TimeEntry extends React.Component {
+  static propTypes = {
+    date: PropTypes.string.isRequired,
+    updateTimeCallback: PropTypes.func.isRequired,
+  };
+  
   constructor(props) {
     super(props);
 
@@ -90,9 +95,9 @@ class TimeEntry extends React.Component {
   generateNewDateTime(field, value) {
     const oldTime = moment(this.props.date);
 
-    if (field === TimeFields.HOUR) {
+    if (field === timeFields.HOUR) {
       oldTime.hour(Number(value));
-    } else if (field === TimeFields.MINUTE) {
+    } else if (field === timeFields.MINUTE) {
       oldTime.minute(Number(value));
     }
 
@@ -115,7 +120,7 @@ class TimeEntry extends React.Component {
               this.setState({blankHour: true});
             } else {
               this.setState({blankHour: false});
-              this.props.callback(this.generateNewDateTime(TimeFields.HOUR, value));
+              this.props.updateTimeCallback(this.generateNewDateTime(timeFields.HOUR, value));
             };
           }}  
         />
@@ -132,7 +137,7 @@ class TimeEntry extends React.Component {
               this.setState({blankMinute: true, minuteDisplayMode: "m"});
             } else {
               this.setState({blankMinute: false, minuteDisplayMode: "m"});
-              this.props.callback(this.generateNewDateTime(TimeFields.MINUTE, value));
+              this.props.updateTimeCallback(this.generateNewDateTime(timeFields.MINUTE, value));
             };
           }}
           onBlur={() => this.setState({minuteDisplayMode: "mm"})}
@@ -142,7 +147,7 @@ class TimeEntry extends React.Component {
           onClick={() => {
             const hourAdjustment = this.generateDisplayPeriod() === "am" ? 12 : -12;
             const newHour = moment(this.props.date).hour() + hourAdjustment;
-            this.props.callback(this.generateNewDateTime(TimeFields.HOUR, newHour));
+            this.props.updateTimeCallback(this.generateNewDateTime(timeFields.HOUR, newHour));
           }}
         >
           {this.generateDisplayPeriod()}
@@ -151,11 +156,5 @@ class TimeEntry extends React.Component {
     )
   }
 }
-
-// NewWorkoutModule.propTypes = {
-//   onClose: PropTypes.func.isRequired,
-//   show: PropTypes.bool,
-//   children: PropTypes.node
-// };
 
 export default NewWorkoutModule;
