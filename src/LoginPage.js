@@ -18,7 +18,7 @@ class LoginPage extends React.Component {
             // Listen for sign-in state changes.
             window.gapi.auth2.getAuthInstance().isSignedIn.listen((signinStatus) => {
                 const googleUser = signinStatus
-                    ? window.gapi.auth2.GoogleAuth.currentUser.get()
+                    ? window.gapi.auth2.getAuthInstance().currentUser.get()
                     : null;
                 this.props.signinHandler(signinStatus, googleUser);
             });
@@ -37,12 +37,8 @@ class LoginPage extends React.Component {
     handleAuthClick(event) {
         const signinPromise = window.gapi.auth2.getAuthInstance().signIn();
         signinPromise.then(
-            (googleAuth) => {
-                // Newly created googleAuth objects don't yet have a GoogleUser,
-                // so user a listener to proceed once it's been created.
-                googleAuth.currentUser.listen(
-                    (googleUser) => {this.props.signinHandler(true, googleUser)}
-                );
+            (googleUser) => {
+                this.props.signinHandler(true, googleUser);
             },
             (error) => {console.log(error)}
         );
