@@ -3,7 +3,7 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import {defaultView, serverDateFormat, dbAddress, gClientID} from './configs';
+import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import NewWorkoutModule from "./NewWorkoutModule";
@@ -229,9 +229,19 @@ class MainPanel extends React.Component {
     const handler = this.signinHandler.bind(this);
 
     window.gapi.load('auth2', function() {
-      window.gapi.auth2.init({client_id: gClientID}).then(
+      // Load+Init the auth2 instance here first. 
+      // Subsequent calls to window.gapi don't need to init, just wait for load
+      window.gapi.auth2.init({
+        apiKey: gCalAPIKey,
+        clientId: gClientID,
+        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"],
+        scope: "https://www.googleapis.com/auth/calendar",
+      }).then(
+        // Check if user is already logged in.
+        // If so, handle the signed in user.
+        // If not, go to login page to get a GoogleUser object.
         (googleAuth) => {
-          // unsure if this listner works / is necessary
+          // unsure if this listener works / is necessary
           // googleAuth.isSignedIn.listen(isSignedIn => {
           //   handler(isSignedIn, googleAuth.currentUser.get());
           // });
@@ -249,9 +259,9 @@ class MainPanel extends React.Component {
     this.populateUser();
   }
   
-  signinHandler(isSuccess, googleAuth) {
+  signinHandler(isSuccess, googleUser) {
     if (isSuccess) {
-      const profile = googleAuth.getBasicProfile();
+      const profile = googleUser.getBasicProfile();
       const userID = profile.getId();
       const newState = {
         userID: userID,

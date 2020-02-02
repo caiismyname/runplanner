@@ -7,6 +7,7 @@ export const defaultView = {
   COUNTDOWN: "countdown",
 };
 export const gClientID = "953053521176-om8kfj3ei7g0pm6dq6cohhhb7ucnhaje.apps.googleusercontent.com";
+export const gCalAPIKey = "AIzaSyAS8CDSgFOby27S3H1jy4wmY_-Z3XbxZoA";
 
 // For NewWorkoutModule
 export const workoutFields = {
