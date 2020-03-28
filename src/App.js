@@ -3,7 +3,7 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey} from './configs';
+import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import NewWorkoutModule from "./NewWorkoutModule";
@@ -112,6 +112,8 @@ class WorkoutHandler {
       payload: payload,
     }];
 
+    this.updateWorkoutInGCal("foo", "bar");
+
     axios.post(dbAddress + "addworkouts", {"toAdd": workoutsToAdd})
     .then(res => {
       console.log(res.data);
@@ -202,18 +204,10 @@ class MainPanel extends React.Component {
     this.onboardingHandler = this.onboardingHandler.bind(this);
 
     this.state = {
+      // local state control (not loaded from anywhere)
       pendingUserLoading: true,
       userIsLoaded: false, // Has the user logged in via Google OAuth?
       userExists: false, // Is the Google userID in our DB?
-      userID: "",
-      name: "",
-      email: "",
-      defaultView: defaultView.CALENDAR,
-      mainTimezone: "America/Los_Angeles",
-      startingDayOfWeek: 0,
-      countdownConfig: {
-        deadline: moment().format(serverDateFormat)
-      },
       addWorkoutModuleConfig: {
         showingAddWorkoutModule: false,
         workoutId: "",
@@ -222,6 +216,20 @@ class MainPanel extends React.Component {
       currentMonth: new MonthHandler(),
       workoutHandler: new WorkoutHandler(),
       workouts: {},
+      
+      // from Google auth API
+      userID: "", // We use the Google ID as our user ID in Mongo as well
+      name: "",
+      email: "",
+
+      // from Mongo
+      calendarId: "",
+      defaultView: defaultView.CALENDAR,
+      mainTimezone: "America/Los_Angeles",
+      startingDayOfWeek: 0,
+      countdownConfig: {
+        deadline: moment().format(serverDateFormat)
+      },
     }
   }
 
@@ -258,6 +266,20 @@ class MainPanel extends React.Component {
 
     this.populateUser();
   }
+ 
+  initializeGCalCalendar(timezone, callback) {
+    window.gapi.load('client:auth2', () => {   
+      window.gapi.client.load("calendar", "v3", () => {
+        window.gapi.client.calendar.calendars.insert({
+          'summary': gCalDefaultName, // Summary is the calendar name
+          'timeZone': timezone,
+        }).then((response) => { // For some reason, this call only works if you attach a .then() to it
+          console.log(response);
+          callback(response.result.id)
+        });
+      });
+    });
+  }
   
   signinHandler(isSuccess, googleUser) {
     if (isSuccess) {
@@ -283,21 +305,23 @@ class MainPanel extends React.Component {
 
   onboardingHandler(startingDayOfWeek, defaultView, mainTimezone) {
     const userId = this.state.userID;
-    axios.post(dbAddress + "adduser", 
-      {
-        "_id": userId,
-        "config": {
-          "startingDayOfWeek": startingDayOfWeek,
-          "defaultView": defaultView,
-          "mainTimezone": mainTimezone,
-        },
-        "countdownConfig": {
-          "deadline": null,
-        },
-      }
-    )
-    .then(res => {
-      this.setState({userExists: true}, () => this.populateUser());
+    this.initializeGCalCalendar(mainTimezone, (calendarId) => {
+      axios.post(dbAddress + "adduser", 
+        {
+          "_id": userId,
+          "calendarId": calendarId,
+          "config": {
+            "startingDayOfWeek": startingDayOfWeek,
+            "defaultView": defaultView,
+            "mainTimezone": mainTimezone,
+          },
+          "countdownConfig": {
+            "deadline": null,
+          },
+        })
+      .then(res => {
+        this.setState({userExists: true}, () => this.populateUser());
+      });
     });
   }
 
@@ -318,10 +342,12 @@ class MainPanel extends React.Component {
       axios.get(dbAddress + "getuser/" + this.state.userID)
         .then(response => {
           this.setState({
+            // TODO would it be easier if we just kept a "config" object in state?
             "defaultView": response.data.config.defaultView,
             "mainTimezone": response.data.config.mainTimezone,
             "countdownConfig": response.data.countdownConfig,
             "startingDayOfWeek": response.data.config.startingDayOfWeek,
+            "calendarId": response.data.calendarId,
           });
           
           this.state.workoutHandler.setuserID(this.state.userID);

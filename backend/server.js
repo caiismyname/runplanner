@@ -75,6 +75,20 @@ runplannerRoutes.route("/updateuser").post(function(req, res) {
     })
 })
 
+runplannerRoutes.route("/getuser/:id").get(function(req, res){ 
+    Users.findOne({_id: req.params.id}, (err, item) => {
+        if (err) {
+            console.log(err);
+        } else {
+            if (!item) {
+                res.status(404).send("User not found");
+            } else {
+                res.json(item);
+            }
+        }
+    });
+})
+
 //
 //
 // Workout CRUD operations
@@ -134,26 +148,6 @@ runplannerRoutes.route("/updateworkouts").post(function(req, res) {
     });
 });
 
-//
-//
-// GETs
-//
-//
-
-runplannerRoutes.route("/getuser/:id").get(function(req, res){ 
-    Users.findOne({_id: req.params.id}, (err, item) => {
-        if (err) {
-            console.log(err);
-        } else {
-            if (!item) {
-                res.status(404).send("User not found");
-            } else {
-                res.json(item);
-            }
-        }
-    });
-})
-
 runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req, res) {
     Workouts.findOne(
         {owner: req.params.id, date: req.params.date}, 
@@ -196,6 +190,9 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
         }
     );
 })
+
+
+// Misc
 
 app.use("/runplannerDB", runplannerRoutes);
 app.listen(PORT, function() {

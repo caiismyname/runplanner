@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 
 let User = new Schema({
     _id: String,
+    calendarId: String,
     config: {
         startingDayOfWeek: {
             type: Number,
