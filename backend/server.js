@@ -96,26 +96,40 @@ runplannerRoutes.route("/getuser/:id").get(function(req, res){
 //
 
 runplannerRoutes.route("/addworkouts").post(function(req, res) {
-    let newIds = {};
-    req.body.toAdd.forEach(w => {
-        proceedIfUserExists(w.owner, 
-            () => {
-                let workout = new Workouts(w);
-                workout.save(function(err, workout) {
-                    if (err) {
-                        res.status(400).send("Adding new workout failed");
-                    } else {
-                        newIds[w.date] = workout._id;
-                        res.status(200).json({
-                            "message": "Workout added successfully", 
-                            "id": workout._id,
-                        });
-                    }
-                });
-            },
-            () => {res.status(400).send("Adding new workout failed: the user does not exist");}
-        );
-    })
+    var newIds = [];
+    let promises = [];
+    // Oh god. This assumes workout order will be preserved across all calls.
+    for (let i = 0; i < req.body.toAdd.length; i++) {
+        const w = req.body.toAdd[i];
+        const promise = new Promise(function(resolve, reject) {
+            proceedIfUserExists(w.owner, 
+                (i) => {
+                    let workout = new Workouts(w);
+                    workout.save(function(err, workout) {
+                        if (err) {
+                            reject();
+                        } else {
+                            newIds.splice(i, 1, workout._id);
+                            console.log("adding " + workout._id);
+                            resolve();
+                        }
+                    });
+                },
+                () => reject()
+            );
+        });
+        promises.push(promise);
+    };
+
+    Promise.all(promises).then(
+        () => {
+            res.status(200).json({
+                "message": newIds.length + " workout(s) added successfully", 
+                "ids": newIds,
+            });
+        }, 
+        () => res.status(400).send("Adding new workout failed: the user does not exist")
+    );
 });
 
 runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
@@ -139,6 +153,7 @@ runplannerRoutes.route("/updateworkouts").post(function(req, res) {
             } else {
                 workout.payload = workoutToUpdate.payload;
                 workout.owner = workoutToUpdate.owner;
+                workout.gEventId = workoutToUpdate.gEventId;
     
                 workout.save()
                     .then(workout => {res.json("Workout updated")})
@@ -159,8 +174,7 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
                     res.status(404).send("Workout not found");
                 } else {
                     res.json(item);
-                }
-                
+                }           
             }
         }
     );
@@ -183,6 +197,7 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
                     return {  
                         "payload": workout.payload,
                         "id": workout._id,
+                        "gEventId": workout.gEventId,
                     }
                 });
                 res.json(formattedItems);

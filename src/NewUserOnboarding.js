@@ -10,7 +10,7 @@ class NewUserOnboarding extends React.Component {
         return (
             <div>
                 This is the onboarding flow
-                <button onClick={() => this.props.onboardingHandler(2, "calendar", "America/Los_Angeles")}>Submit</button>
+                <button onClick={() => this.props.onboardingHandler(2, "calendar", "America/Los_Angeles", 60)}>Submit</button>
                 <div>
                     "empty space"
                 </div>

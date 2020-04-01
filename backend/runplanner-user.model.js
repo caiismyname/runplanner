@@ -15,6 +15,10 @@ let User = new Schema({
             enum: ["calendar", "countdown"]
         },
         mainTimezone: String,
+        defaultRunDuration: { // in minutes
+            type: Number,
+            min: 1,
+        },
     },
     countdownConfig: {
         deadline: {
