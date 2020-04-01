@@ -86,17 +86,6 @@ class WorkoutHandler {
     this.calendarId = id;
   }
 
-  // no date changes for now TODO add date changes
-  updateWorkout(id, payload, callback) {
-      // This funciton does not push updates to DB, it just marks workouts that need to be pushed upon save.
-      this.workouts[id] = payload;
-      // "Modified" workouts are workouts that have already been pushed to DB.
-      if (!(this.modified.includes(id))) {
-        this.modified.push(id);
-      };
-      callback(this.generateDisplayWorkouts());
-  }
-
   generateEmptyPayload(givenDate) {
     const defaultStartTime = {hour: 7, minute: 0}; // 24 hour time
 
@@ -190,6 +179,53 @@ class WorkoutHandler {
     });
   }
 
+  // no date changes for now TODO add date changes
+  updateWorkout(id, payload, callback) {
+    // This funciton does not push updates to DB, it just marks workouts that need to be pushed upon save.
+    this.workouts[id] = payload;
+    // "Modified" workouts are workouts that have already been pushed to DB.
+    if (!(this.modified.includes(id))) {
+      this.modified.push(id);
+    };
+    callback(this.generateDisplayWorkouts());
+  }
+
+  updateGCalEvents(workoutIds) {
+    window.gapi.load('client:auth2', () => {   
+      window.gapi.client.load("calendar", "v3", () => {
+        const batch = window.gapi.client.newBatch();
+
+        workoutIds.forEach(workoutId => {
+          const gEventId = this.gEventIds[workoutId];
+          const newTitle = this.workouts[workoutId].content;
+          const newStart = this.workouts[workoutId].date;
+
+          batch.add(window.gapi.client.calendar.events.update(
+            {
+              'calendarId': this.calendarId,
+              'eventId': gEventId,
+              'resource': {
+                'summary': newTitle,
+                'start': {
+                  'dateTime': newStart,
+                  'timeZone': this.timeZone
+                },
+                'end': {
+                  'dateTime': moment(newStart).add(this.defaultRunDuration, "minutes").toISOString(),
+                  'timeZone': this.timeZone
+                }
+              }
+            }
+          ));
+        });
+
+        batch.then(response => {
+          console.log(response);
+        });
+      });
+    });
+  }
+
   syncToDB(callback) {
     // TODO do these still need to be deduped?
     const modified = [...new Set(this.modified)]; // Dedup the list
@@ -204,6 +240,7 @@ class WorkoutHandler {
     });
     
     if (workoutsToUpdate.length > 0) {
+      this.updateGCalEvents(modified);
       axios.post(dbAddress + "updateworkouts", {"toUpdate": workoutsToUpdate})
         .then(res => {
           console.log(res.data);
@@ -459,7 +496,6 @@ class MainPanel extends React.Component {
   createNewWorkout(date) {
     this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIds) => {
       const newState = {workouts: displayWorkouts};
-      console.log("createNEwWorkout " + newWorkoutIds);
       // Clicking the "add workout" button won't trigger the opening of the AWM.
       // The AWM is opened here once the workout has been created in DB.
       newState.addWorkoutModuleConfig = { ...this.state.addWorkoutModuleConfig};
