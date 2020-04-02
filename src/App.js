@@ -151,7 +151,7 @@ class WorkoutHandler {
             {
               'calendarId': this.calendarId,
               'resource': {
-                'summary': "temp name",//payload.content,
+                'summary': "New run",
                 'start': {
                   'dateTime': payload.date,
                   'timeZone': this.timeZone
