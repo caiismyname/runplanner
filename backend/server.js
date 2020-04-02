@@ -128,7 +128,7 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
                 "ids": newIds,
             });
         }, 
-        () => res.status(400).send("Adding new workout failed: the user does not exist")
+        () => res.status(400).send("Adding new workout(s) failed")
     );
 });
 

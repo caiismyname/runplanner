@@ -226,6 +226,10 @@ class DayCell extends React.Component {
                     >
                         <h3>{workout.payload.type}</h3>
                         <p>{workout.payload.content}</p>
+                        {workout.payload.milage.goal !== 0
+                          ? <p>{workout.payload.milage.goal + " miles"}</p>
+                          : null
+                        }
                     </div>
                 );
             });

@@ -15,6 +15,8 @@ export const workoutFields = {
   TYPE: "type",
   CONTENT: "content",
   DATE: "date",
+  MILAGE_GOAL: "milage.goal",
+  MILAGE_ACTUAL: "milage.actual",
 };
 export const timeFields = {
   HOUR: "hour",
@@ -29,6 +31,10 @@ export const payloadWithIDPropType = PropTypes.shape({
     "content": PropTypes.string,
     "date": PropTypes.string,
     "type": PropTypes.string,
+    "milage": PropTypes.shape({
+      "goal": PropTypes.number,
+      "actual": PropTypes.number,
+    })
   })
 });
 
@@ -36,4 +42,8 @@ export const payloadPropType = PropTypes.shape({
   "content": PropTypes.string,
   "date": PropTypes.string,
   "type": PropTypes.string,
+  "milage": PropTypes.shape({
+    "goal": PropTypes.number,
+    "actual": PropTypes.number,
+  })
 });

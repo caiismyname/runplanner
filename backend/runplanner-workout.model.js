@@ -21,6 +21,14 @@ let Workout = new Schema({
         date: {
             type: Date,
         },
+        milage: {
+            goal: {
+                type: Number,
+            },
+            actual: {
+                type: Number,
+            },
+        },
     }
 });
 

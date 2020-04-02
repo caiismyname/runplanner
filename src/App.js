@@ -98,6 +98,10 @@ class WorkoutHandler {
       date: date.toISOString(),
       content: "",
       type: "",
+      milage: {
+        goal: 0,
+        // actual: 0,
+      },
     });
   }
 
@@ -183,6 +187,7 @@ class WorkoutHandler {
   updateWorkout(id, payload, callback) {
     // This funciton does not push updates to DB, it just marks workouts that need to be pushed upon save.
     this.workouts[id] = payload;
+    console.log(payload);
     // "Modified" workouts are workouts that have already been pushed to DB.
     if (!(this.modified.includes(id))) {
       this.modified.push(id);
@@ -197,7 +202,8 @@ class WorkoutHandler {
 
         workoutIds.forEach(workoutId => {
           const gEventId = this.gEventIds[workoutId];
-          const newTitle = this.workouts[workoutId].content;
+          // const newTitle = this.workouts[workoutId].content;
+          const newTitle = this.workouts[workoutId].milage.goal + " mile run";
           const newStart = this.workouts[workoutId].date;
 
           batch.add(window.gapi.client.calendar.events.update(
