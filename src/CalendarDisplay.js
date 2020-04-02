@@ -22,7 +22,7 @@ class Calendar extends React.Component {
       workouts: PropTypes.objectOf(
         PropTypes.arrayOf(payloadWithIDPropType)
       ).isRequired,
-      updateDayContentFunc: PropTypes.func.isRequired,
+      // updateDayContentFunc: PropTypes.func.isRequired,
       deadline: PropTypes.string,
       defaultView: PropTypes.oneOf(Object.values(defaultView)),
       startingDayOfWeek: PropTypes.oneOf([0,1,2,3,4,5,6]),
@@ -106,7 +106,7 @@ class Calendar extends React.Component {
           <div key={index.toString()}>
             <WeekDisplay 
               days={value} 
-              updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}
+              // updateDayContentFunc={(workoutId, content) => this.props.updateDayContentFunc(workoutId, content)}
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
             />
           </div>
@@ -165,7 +165,7 @@ class WeekDisplay extends React.Component {
           "payloads": PropTypes.arrayOf(payloadWithIDPropType),
         })
       ).isRequired,
-      "updateDayContentFunc": PropTypes.func.isRequired,
+      // "updateDayContentFunc": PropTypes.func.isRequired,
       "addNewWorkoutHandler": PropTypes.func.isRequired,
     }; 
 
@@ -184,7 +184,7 @@ class WeekDisplay extends React.Component {
               // This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
               date={value ? value.date : ""}
               payloads={value.payloads ? value.payloads : [{payload: {"content": "", "type": "", "date": ""}, id: ""}]} 
-              updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
+              // updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
             />
           </div>
@@ -202,7 +202,7 @@ class WeekDisplay extends React.Component {
 class DayCell extends React.Component {
     static propTypes = {
       "addNewWorkoutHandler": PropTypes.func.isRequired,
-      "updateDayContentFunc": PropTypes.func.isRequired,
+      // "updateDayContentFunc": PropTypes.func.isRequired,
       "date": PropTypes.string.isRequired,
       "payloads": PropTypes.arrayOf(payloadWithIDPropType).isRequired,
     };
