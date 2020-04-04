@@ -29,8 +29,6 @@ class NewWorkoutModule extends React.Component {
       newPayload[source] = newValue;
     }
 
-    console.log(newPayload);
-
     this.props.updateDayContentFunc(this.props.id, newPayload);
   }
 

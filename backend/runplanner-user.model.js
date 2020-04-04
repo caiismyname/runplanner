@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 let User = new Schema({
     _id: String,
-    calendarId: String,
+    calendarID: String,
     config: {
         startingDayOfWeek: {
             type: Number,
@@ -24,7 +24,7 @@ let User = new Schema({
         deadline: {
             type: Date,
         }
-    }
+    },
 });
 
 module.exports = mongoose.model("User", User);

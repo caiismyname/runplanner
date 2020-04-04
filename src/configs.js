@@ -47,3 +47,8 @@ export const payloadPropType = PropTypes.shape({
     "actual": PropTypes.number,
   })
 });
+
+// Autofill types
+export const autofillTypes = {
+  WEEKLY_MILAGE_GOAL: "weekly_milage_goal",
+}
