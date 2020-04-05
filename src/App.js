@@ -6,9 +6,8 @@ import axios from 'axios';
 import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
-import NewWorkoutModule from "./NewWorkoutModule";
+import EditWorkoutModule from "./EditWorkoutModule";
 import Calendar from "./CalendarDisplay";
-// import WeeklyGoalHandler from "./WeeklyGoalHandler";
 
 var moment = require('moment-timezone');
 
@@ -685,21 +684,21 @@ class MainPanel extends React.Component {
       : defaultView.CALENDAR;
     const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
 
-    let newWorkoutModulePayload;
+    let editWorkoutModulePayload;
     if (this.state.addWorkoutModuleConfig.showingAddWorkoutModule 
       && this.state.addWorkoutModuleConfig.workoutID !== "") {
         // Showing existing workout
-      newWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutID);
+      editWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutID);
     };
     // Need failure case
 
     const content =         
       <div style={{display: "flex"}}>
-          <NewWorkoutModule
+          <EditWorkoutModule
             show={addWorkoutModuleConfig.showingAddWorkoutModule}
             onClose={() => this.toggleAddWorkoutModule("", "")}
             updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
-            payload={newWorkoutModulePayload}
+            payload={editWorkoutModulePayload}
             id={addWorkoutModuleConfig.workoutID}
           />
         <div style={{flex: "1"}}>
