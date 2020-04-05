@@ -97,7 +97,7 @@ runplannerRoutes.route("/getuser/:id").get(function(req, res){
 //
 
 runplannerRoutes.route("/addworkouts").post(function(req, res) {
-    var newIds = [];
+    var newIDs = [];
     let promises = [];
     // Oh god. This assumes workout order will be preserved across all calls.
     for (let i = 0; i < req.body.toAdd.length; i++) {
@@ -110,7 +110,7 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
                         if (err) {
                             reject();
                         } else {
-                            newIds.splice(i, 1, workout._id);
+                            newIDs.splice(i, 1, workout._id);
                             console.log("Adding workout: " + workout._id);
                             resolve();
                         }
@@ -125,8 +125,8 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
     Promise.all(promises).then(
         () => {
             res.status(200).json({
-                "message": newIds.length + " workout(s) added successfully", 
-                "ids": newIds,
+                "message": newIDs.length + " workout(s) added successfully", 
+                "ids": newIDs,
             });
         }, 
         () => res.status(400).send("Adding new workout(s) failed")
@@ -154,7 +154,7 @@ runplannerRoutes.route("/updateworkouts").post(function(req, res) {
             } else {
                 workout.payload = workoutToUpdate.payload;
                 workout.owner = workoutToUpdate.owner;
-                workout.gEventId = workoutToUpdate.gEventId;
+                workout.gEventID = workoutToUpdate.gEventID;
     
                 workout.save()
                     .then(workout => {res.json("Workout updated")})
@@ -198,7 +198,7 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
                     return {  
                         "payload": workout.payload,
                         "id": workout._id,
-                        "gEventId": workout.gEventId,
+                        "gEventID": workout.gEventID,
                     }
                 });
                 res.json(formattedItems);

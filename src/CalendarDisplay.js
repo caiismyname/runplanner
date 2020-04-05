@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType, timeFields, weeklyGoalAddOrUpdateValidator} from './configs';
+import {defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType} from './configs';
 import './App.css';
 
 var moment = require('moment-timezone');

@@ -6,7 +6,7 @@ let Workout = new Schema({
         type: String,
         required: [true, "Workouts must have owners"],
     },
-    gEventId: {
+    gEventID: {
         type: String,
         required: [true, "Each workout must be connected to a Google Calendar Event"],
     },

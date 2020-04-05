@@ -20,7 +20,7 @@ export const workoutFields = {
 };
 export const timeFields = {
   HOUR: "hour",
-  "MINUTE": "minute",
+  MINUTE: "minute",
 };
 export const dateDisplayFormat = "M/DD/YY";
 
@@ -47,12 +47,6 @@ export const payloadPropType = PropTypes.shape({
     "actual": PropTypes.number,
   })
 });
-
-export const weeklyGoalAddOrUpdateValidator = (props, propName, componentName) => {
-  if (!props.addWeeklyGoalHandler && !props.updateWeeklyGoalHandler) {
-    return new Error(`One of props 'addWeeklGoalHandler' or 'updateWeeklGoalHandler' was not specified in '${componentName}'.`);
-  }
-};
 
 // Autofill types
 export const autofillTypes = {

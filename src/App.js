@@ -65,7 +65,7 @@ class WorkoutHandler {
     this.calendarID = calendarID;
     this.workouts = {}; // Key = MongoId, Value = workout details
     this.dates = {}; // Key = date, Value = MongoId (to use as reference into above dict)
-    this.gEventIds = {}; // Key = MongoId, Value = Google Calendar event ID
+    this.gEventIDs = {}; // Key = MongoId, Value = Google Calendar event ID
     this.modified = [];
     this.mainTimezone = mainTimezone;
     this.defaultRunDuration = defaultRunDuration;
@@ -116,7 +116,7 @@ class WorkoutHandler {
       wrappedPayload.payload = payload;
       wrappedPayload.owner = this.userID;
       return (wrappedPayload);
-      // addGCalEvent() will add `gEventId` to this object before passing to Mongo
+      // addGCalEvent() will add `gEventID` to this object before passing to Mongo
     });
 
     this.addGCalEvents(wrappedPayloads, (workouts) => {
@@ -124,24 +124,24 @@ class WorkoutHandler {
       axios.post(dbAddress + "addworkouts", {"toAdd": wrappedPayloads})
       .then(res => {
         console.log(res.data);
-        const newWorkoutIds = [];
+        const newWorkoutIDs = [];
         for (let i = 0; i < res.data.ids.length; i++) {
           // Once workout is confirmed in Mongo, add the workout to local state.
           // This assumes that workout IDs are returned in the order in which the workouts were sent
-          const newWorkoutId = res.data.ids[i];
-          newWorkoutIds.push(newWorkoutId);
-          this.workouts[newWorkoutId] = workouts[i].payload;
-          this.gEventIds[newWorkoutId] = workouts[i].gEventId;
+          const newWorkoutID = res.data.ids[i];
+          newWorkoutIDs.push(newWorkoutID);
+          this.workouts[newWorkoutID] = workouts[i].payload;
+          this.gEventIDs[newWorkoutID] = workouts[i].gEventID;
           
           const date = moment(workouts[i].payload.date).format(serverDateFormat);
           if (date in this.dates) {
-            this.dates[date].push(newWorkoutId);
+            this.dates[date].push(newWorkoutID);
           } else {
-            this.dates[date] = [newWorkoutId];
+            this.dates[date] = [newWorkoutID];
           };
         }
         
-        callback(this.generateDisplayWorkouts(), newWorkoutIds);
+        callback(this.generateDisplayWorkouts(), newWorkoutIDs);
       });
     });
   }
@@ -172,13 +172,13 @@ class WorkoutHandler {
       
         // Google batch API says it'll return objects in the order they're sent
         batch.then(response => {
-          const payloadsWithGEventId = [...payloads];
+          const payloadsWithGEventID = [...payloads];
           let payloadIdx = 0;
           for (var eventIdx in response.result) {
-            payloadsWithGEventId[payloadIdx].gEventId = response.result[eventIdx].result.id;
+            payloadsWithGEventID[payloadIdx].gEventID = response.result[eventIdx].result.id;
             payloadIdx += 1;
           }
-          callback(payloadsWithGEventId);
+          callback(payloadsWithGEventID);
         });
       });
     });
@@ -195,21 +195,21 @@ class WorkoutHandler {
     callback(this.generateDisplayWorkouts());
   }
 
-  updateGCalEvents(workoutIds) {
+  updateGCalEvents(workoutIDs) {
     window.gapi.load('client:auth2', () => {   
       window.gapi.client.load("calendar", "v3", () => {
         const batch = window.gapi.client.newBatch();
 
-        workoutIds.forEach(workoutId => {
-          const gEventId = this.gEventIds[workoutId];
-          // const newTitle = this.workouts[workoutId].content;
-          const newTitle = this.workouts[workoutId].milage.goal + " mile run";
-          const newStart = this.workouts[workoutId].date;
+        workoutIDs.forEach(workoutID => {
+          const gEventID = this.gEventIDs[workoutID];
+          // const newTitle = this.workouts[workoutID].content;
+          const newTitle = this.workouts[workoutID].milage.goal + " mile run";
+          const newStart = this.workouts[workoutID].date;
 
           batch.add(window.gapi.client.calendar.events.update(
             {
-              'calendarID': this.calendarID,
-              'eventId': gEventId,
+              'calendarId': this.calendarID,
+              'eventId': gEventID,
               'resource': {
                 'summary': newTitle,
                 'start': {
@@ -235,12 +235,12 @@ class WorkoutHandler {
   syncToDB(callback) {
     // TODO do these still need to be deduped?
     const modified = [...new Set(this.modified)]; // Dedup the list
-    const workoutsToUpdate = modified.map(workoutId => {
+    const workoutsToUpdate = modified.map(workoutID => {
       let res = {};
-      res.payload = this.workouts[workoutId];
+      res.payload = this.workouts[workoutID];
       res.owner = this.userID;
-      res.id = workoutId;
-      res.gEventId = this.gEventIds[workoutId];
+      res.id = workoutID;
+      res.gEventID = this.gEventIDs[workoutID];
 
       return res;
     });
@@ -268,7 +268,7 @@ class WorkoutHandler {
           response.data.forEach(workout => {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
             this.workouts[workout.id] = workout.payload;
-            this.gEventIds[workout.id] = workout.gEventId;
+            this.gEventIDs[workout.id] = workout.gEventID;
             
             const formattedDate = moment(workout.payload.date).format(serverDateFormat);
             if (formattedDate in this.dates) {
@@ -286,8 +286,8 @@ class WorkoutHandler {
     let res = {};
     Object.keys(this.dates).forEach((date, idx) => {
       const workoutsOnDate = [];
-      this.dates[date].forEach((workoutId) => {
-        workoutsOnDate.push({payload: this.workouts[workoutId], id: workoutId});
+      this.dates[date].forEach((workoutID) => {
+        workoutsOnDate.push({payload: this.workouts[workoutID], id: workoutID});
       });
 
       res[date] = workoutsOnDate;
@@ -317,7 +317,7 @@ class MainPanel extends React.Component {
       userExists: false, // Is the Google userID in our DB?
       addWorkoutModuleConfig: {
         showingAddWorkoutModule: false,
-        workoutId: "",
+        workoutID: "",
         workoutDate: "",
       },
       currentMonth: new MonthHandler(),
@@ -417,11 +417,11 @@ class MainPanel extends React.Component {
   }
 
   onboardingHandler(startingDayOfWeek, defaultView, mainTimezone, defaultRunDuration) {
-    const userId = this.state.userID;
+    const userID = this.state.userID;
     this.initializeGCalCalendar(mainTimezone, (calendarID) => {
       axios.post(dbAddress + "adduser", 
         {
-          "_id": userId,
+          "_id": userID,
           "calendarID": calendarID,
           "config": {
             "startingDayOfWeek": startingDayOfWeek,
@@ -484,7 +484,7 @@ class MainPanel extends React.Component {
         // Don't update AWMC state to show the module yet -- wait for object to be created in DB and FE to update.
         // The createNewWorkout function will set AWMC to show.
       } else {
-        newState.workoutId = id;
+        newState.workoutID = id;
         newState.showingAddWorkoutModule = true; // Override in case the module is already open and a new date is selected
         this.setState({addWorkoutModuleConfig: newState});
       };
@@ -536,15 +536,19 @@ class MainPanel extends React.Component {
     });
   }
 
+  updateDB() {
+    this.state.workoutHandler.syncToDB(workouts => this.setState({workouts: workouts}));
+  }
+
   // Creates one new workout. There are some indexing assumptions built on the fact that only 
   // one workout is created.
   createNewWorkout(date) {
-    this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIds) => {
+    this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIDs) => {
       const newState = {workouts: displayWorkouts};
       // Clicking the "add workout" button won't trigger the opening of the AWM.
       // The AWM is opened here once the workout has been created in DB.
       newState.addWorkoutModuleConfig = { ...this.state.addWorkoutModuleConfig};
-      newState.addWorkoutModuleConfig.workoutId = newWorkoutIds[0];
+      newState.addWorkoutModuleConfig.workoutID = newWorkoutIDs[0];
       newState.addWorkoutModuleConfig.showingAddWorkoutModule = true;
       this.setState(newState);
     });
@@ -564,10 +568,7 @@ class MainPanel extends React.Component {
         // Note: this could pose issues by copying over a bunch of now-invalid goals if the start-of-week changes
         const goals = {...this.state.weeklyGoals};
         response.data.forEach(goal => {
-            console.log(goal);
-          
             const formattedStartDate = moment(goal.startDate).format(serverDateFormat);
-            console.log(formattedStartDate, goal.startDate);
             goals[formattedStartDate] = goal; // Will overwrite an existing goal
         });
         
@@ -686,9 +687,9 @@ class MainPanel extends React.Component {
 
     let newWorkoutModulePayload;
     if (this.state.addWorkoutModuleConfig.showingAddWorkoutModule 
-      && this.state.addWorkoutModuleConfig.workoutId !== "") {
+      && this.state.addWorkoutModuleConfig.workoutID !== "") {
         // Showing existing workout
-      newWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutId);
+      newWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutID);
     };
     // Need failure case
 
@@ -697,9 +698,9 @@ class MainPanel extends React.Component {
           <NewWorkoutModule
             show={addWorkoutModuleConfig.showingAddWorkoutModule}
             onClose={() => this.toggleAddWorkoutModule("", "")}
-            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
+            updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
             payload={newWorkoutModulePayload}
-            id={addWorkoutModuleConfig.workoutId}
+            id={addWorkoutModuleConfig.workoutID}
           />
         <div style={{flex: "1"}}>
           <Calendar 
