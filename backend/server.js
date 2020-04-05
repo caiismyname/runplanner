@@ -8,6 +8,7 @@ const PORT = 4000;
 
 let Workouts = require("./runplanner-workout.model");
 let Users = require("./runplanner-user.model");
+let WeeklyGoals = require("./runplanner-weeklyGoal.model");
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -110,7 +111,7 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
                             reject();
                         } else {
                             newIds.splice(i, 1, workout._id);
-                            console.log("adding " + workout._id);
+                            console.log("Adding workout: " + workout._id);
                             resolve();
                         }
                     });
@@ -128,7 +129,7 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
                 "ids": newIds,
             });
         }, 
-        () => res.status(400).send("Adding new workout failed: the user does not exist")
+        () => res.status(400).send("Adding new workout(s) failed")
     );
 });
 
@@ -206,6 +207,110 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
     );
 })
 
+
+//
+//
+// WeeklyGoal CRUD operations
+//
+//
+
+runplannerRoutes.route("/getweeklygoalsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
+    WeeklyGoals.find(
+        { 
+            "startDate": { 
+                $gte: new Date(req.params.gtedate), 
+                $lte: new Date(req.params.ltedate)
+            },
+            "ownerID": req.params.id
+        },
+        (err, items) => {
+            if (err) {
+                console.log(err);
+            } else {
+                let formattedItems = items.map(goal => { 
+                    return ({  
+                        startDate: goal.startDate,
+                        endDate: goal.endDate,
+                        goalValue: goal.goalValue,
+                        goalType: goal.goalType,
+                        goalID: goal._id,
+                    });
+                });
+                res.json(formattedItems);
+            }
+        }
+    );
+})
+
+runplannerRoutes.route("/addweeklygoals").post(function(req, res) {
+    var newIDs = [];
+    let promises = [];
+    // This assumes workout order will be preserved across all calls.
+    for (let i = 0; i < req.body.toAdd.length; i++) {
+        const g = req.body.toAdd[i];
+        const promise = new Promise(function(resolve, reject) {
+            proceedIfUserExists(g.ownerID, 
+                (i) => {
+                    let weeklyGoal = new WeeklyGoals(g);
+                    weeklyGoal.save(function(err, goal) {
+                        if (err) {
+                            reject();
+                        } else {
+                            newIDs.splice(i, 1, goal._id);
+                            console.log("Adding weekly goal: " + goal._id);
+                            resolve();
+                        }
+                    });
+                },
+                () => reject()
+            );
+        });
+        promises.push(promise);
+    };
+
+    Promise.all(promises).then(
+        () => {
+            res.status(200).json({
+                "message": newIDs.length + " weekly goals(s) added successfully", 
+                "ids": newIDs,
+            });
+        }, 
+        () => res.status(400).send("Adding new weekly goal(s) failed")
+    );
+});
+
+runplannerRoutes.route("/updateweeklygoals").post(function(req, res) {
+    Object.keys(req.body.toUpdate).forEach((key,idx) => {
+        let goalToUpdate = req.body.toUpdate[key];
+        WeeklyGoals.findById(goalToUpdate.goalID, function(err, goal) {
+            if (!goal) {
+                res.status(404).send("Weekly goal not found");
+            } else {
+                goal.startDate = goalToUpdate.startDate;
+                goal.endDate = goalToUpdate.endDate;
+                goal.goalValue = goalToUpdate.goalValue;
+                goal.goalType = goalToUpdate.goalType;
+                goal.ownerID = goalToUpdate.ownerID;
+    
+                goal.save()
+                    .then(goal => {res.json(req.body.toUpdate.length + " weekly goal(s) updated")})
+                    .catch(err => {res.status(400).send("Weekly goal update failed")});
+            }
+        });
+    });
+});
+
+runplannerRoutes.route("/deleteweeklygoal/:id").post(function(req, res) {
+    WeeklyGoals.findById(req.params.id, function(err, goal) {
+        if (!goal) {
+            res.status(404).send("Weekly goal not found");
+        } else {
+            WeeklyGoal.deleteOne({_id: req.params.id})
+                .then(res.status(200).json("Weekly goal deleted successfully"))
+                .catch(err => {res.status(400).send("Deleting weekly goal failed")});
+        }
+    });
+});
 
 // Misc
 

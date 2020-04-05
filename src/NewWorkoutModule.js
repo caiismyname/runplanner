@@ -21,7 +21,13 @@ class NewWorkoutModule extends React.Component {
 
   handleWorkoutChange(newValue, source) {
     let newPayload = { ...this.props.payload};
-    newPayload[source] = newValue;
+    if (source === workoutFields.MILAGE_ACTUAL) { 
+      newPayload.milage.actual = newValue;
+    } else if (source === workoutFields.MILAGE_GOAL) {
+      newPayload.milage.goal = newValue;
+    } else {
+      newPayload[source] = newValue;
+    }
 
     this.props.updateDayContentFunc(this.props.id, newPayload);
   }
@@ -55,6 +61,11 @@ class NewWorkoutModule extends React.Component {
         
         <h2>Content</h2>
         <textarea value={this.props.payload.content} onChange={(e) => this.handleWorkoutChange(e.target.value, workoutFields.CONTENT)}/>
+        <br/>
+        <br/>
+        
+        <h2>Milage</h2>
+        <input type="number" value={this.props.payload.milage.goal} onChange={(e) => this.handleWorkoutChange(Number(e.target.value), workoutFields.MILAGE_GOAL)}/>
         <div className="footer">
           <button onClick={this.props.onClose}>Close</button>
           <button>Delete</button>
