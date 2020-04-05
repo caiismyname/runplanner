@@ -48,6 +48,12 @@ export const payloadPropType = PropTypes.shape({
   })
 });
 
+export const weeklyGoalAddOrUpdateValidator = (props, propName, componentName) => {
+  if (!props.addWeeklyGoalHandler && !props.updateWeeklyGoalHandler) {
+    return new Error(`One of props 'addWeeklGoalHandler' or 'updateWeeklGoalHandler' was not specified in '${componentName}'.`);
+  }
+};
+
 // Autofill types
 export const autofillTypes = {
   WEEKLY_MILAGE_GOAL: "weekly_milage_goal",

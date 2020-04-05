@@ -221,7 +221,7 @@ runplannerRoutes.route("/getweeklygoalsforownerfordaterange/:id/:gtedate/:ltedat
                 $gte: new Date(req.params.gtedate), 
                 $lte: new Date(req.params.ltedate)
             },
-            "ownerId": req.params.id
+            "ownerID": req.params.id
         },
         (err, items) => {
             if (err) {
@@ -229,10 +229,11 @@ runplannerRoutes.route("/getweeklygoalsforownerfordaterange/:id/:gtedate/:ltedat
             } else {
                 let formattedItems = items.map(goal => { 
                     return ({  
-                        type: goal.type,
                         startDate: goal.startDate,
                         endDate: goal.endDate,
-                        goalValue: goal.goalValue,    
+                        goalValue: goal.goalValue,
+                        goalType: goal.goalType,
+                        goalID: goal._id,
                     });
                 });
                 res.json(formattedItems);
@@ -278,6 +279,27 @@ runplannerRoutes.route("/addweeklygoals").post(function(req, res) {
     );
 });
 
+runplannerRoutes.route("/updateweeklygoals").post(function(req, res) {
+    Object.keys(req.body.toUpdate).forEach((key,idx) => {
+        let goalToUpdate = req.body.toUpdate[key];
+        WeeklyGoals.findById(goalToUpdate.goalID, function(err, goal) {
+            if (!goal) {
+                res.status(404).send("Weekly goal not found");
+            } else {
+                goal.startDate = goalToUpdate.startDate;
+                goal.endDate = goalToUpdate.endDate;
+                goal.goalValue = goalToUpdate.goalValue;
+                goal.goalType = goalToUpdate.goalType;
+                goal.ownerID = goalToUpdate.ownerID;
+    
+                goal.save()
+                    .then(goal => {res.json(req.body.toUpdate.length + " weekly goal(s) updated")})
+                    .catch(err => {res.status(400).send("Weekly goal update failed")});
+            }
+        });
+    });
+});
+
 runplannerRoutes.route("/deleteweeklygoal/:id").post(function(req, res) {
     WeeklyGoals.findById(req.params.id, function(err, goal) {
         if (!goal) {
@@ -287,26 +309,6 @@ runplannerRoutes.route("/deleteweeklygoal/:id").post(function(req, res) {
                 .then(res.status(200).json("Weekly goal deleted successfully"))
                 .catch(err => {res.status(400).send("Deleting weekly goal failed")});
         }
-    });
-});
-
-runplannerRoutes.route("/updateweeklygoals").post(function(req, res) {
-    Object.keys(req.body.toUpdate).forEach((key,idx) => {
-        let goalToUpdate = req.body.toUpdate[key];
-        WeeklyGoals.findById(goalToUpdate.id, function(err, goal) {
-            if (!goal) {
-                res.status(404).send("Weekly goal not found");
-            } else {
-                goal.type = goalToUpdate.type;
-                goal.startDate = goalToUpdate.startDate;
-                goal.endDate = goalToUpdate.endDate;
-                goal.goalValue = goalToUpdate.goalValue;
-    
-                goal.save()
-                    .then(goal => {res.json("Weekly goal updated")})
-                    .catch(err => {res.status(400).send("Weekly goal update failed")});
-            }
-        });
     });
 });
 

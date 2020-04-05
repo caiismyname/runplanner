@@ -506,7 +506,6 @@ class MainPanel extends React.Component {
             "startingDayOfWeek": response.data.config.startingDayOfWeek,
             "defaultRunDuration": response.data.config.defaultRunDuration,
             "calendarID": response.data.calendarID,
-            "weeklyGoalConfigs": response.data.weeklyGoalConfigs,
             "countdownConfig": response.data.countdownConfig,
           });
           
@@ -514,6 +513,7 @@ class MainPanel extends React.Component {
           this.state.workoutHandler.setCalendarID(this.state.calendarID);
           this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
           this.populateWorkouts();
+          this.populateWeeklyGoals();
         });
       };
   }
@@ -567,7 +567,8 @@ class MainPanel extends React.Component {
             console.log(goal);
           
             const formattedStartDate = moment(goal.startDate).format(serverDateFormat);
-            goals[formattedStartDate] = goal; // have to include mongo ID as well // Will overwrite an existing goal
+            console.log(formattedStartDate, goal.startDate);
+            goals[formattedStartDate] = goal; // Will overwrite an existing goal
         });
         
         this.setState({weeklyGoals: goals});
@@ -575,8 +576,33 @@ class MainPanel extends React.Component {
     });
   }
 
-  addNewWeeklyGoal(goal) {
-    this.addNewWeeklyGoals([goal]);
+  sendWeeklyGoalsToDB(goalsToSend) {
+    let goalsToAdd = [];
+    let goalsToUpdate = [];
+
+    if (!Array.isArray(goalsToSend)) {
+      goalsToSend = [goalsToSend];
+    }
+    
+    for (let i in goalsToSend) {
+      const goal = goalsToSend[i];
+      // Attach timezone info since Mongo Date representation requires it
+      goal.startDate = moment.tz(goal.startDate, this.state.mainTimezone);
+      goal.endDate = moment.tz(goal.endDate, this.state.mainTimezone);
+      if ("goalID" in goal) {
+        goalsToUpdate.push(goal);
+      } else {
+        goalsToAdd.push(goal);
+      }
+    }
+
+    if (goalsToAdd.length > 0 ) {
+      this.addNewWeeklyGoals(goalsToAdd);
+    }
+
+    if (goalsToUpdate.length > 0) {
+      this.updateWeeklyGoals(goalsToUpdate);
+    }
   }
 
   addNewWeeklyGoals(goalsToAdd) {
@@ -593,6 +619,10 @@ class MainPanel extends React.Component {
         const newGoals = {...this.state.weeklyGoals};
         for (let i = 0; i < res.data.ids.length; i++) {
             const newGoal = {...goalsToAdd[i]};
+            // Strip time/timezone info
+            newGoal.startDate = moment(newGoal.startDate).format(serverDateFormat);
+            newGoal.endDate = moment(newGoal.endDate).format(serverDateFormat);
+            
             newGoal.goalID = res.data.ids[i];
             newGoals[newGoal.startDate] = newGoal;
         }
@@ -601,13 +631,38 @@ class MainPanel extends React.Component {
     });
   }
 
-  updateWeeklyGoal(goalID) {
+  updateWeeklyGoals(goalsToUpdate) {
+    const wrappedGoals = goalsToUpdate.map(goal => {
+      const wrappedGoal = {...goal};
+      wrappedGoal.ownerID = this.state.userID;
 
+      return(wrappedGoal);
+    });
+    
+    if (wrappedGoals.length > 0) {
+      axios.post(dbAddress + "updateweeklygoals", {"toUpdate": wrappedGoals})
+        .then(res => {
+          console.log(res.data);
+
+          const newState = {...this.state.weeklyGoals};
+          goalsToUpdate.forEach(goal => {
+            // Strip time info
+            goal.startDate = moment(goal.startDate).format(serverDateFormat);
+            goal.endDate = moment(goal.endDate).format(serverDateFormat);
+            newState[goal.startDate] = goal
+          });
+          this.setState({weeklyGoals: newState});
+        });
+    };
   }
 
   deleteWeeklyGoal(goalID) {
 
   }
+
+
+
+
 
   render() {
     if(this.state.pendingUserLoading) {
@@ -653,7 +708,7 @@ class MainPanel extends React.Component {
             incrementMonthHandler={() => this.incrementMonth()} 
             addNewWorkoutHandler={(date, id) => this.toggleAddWorkoutModule(date, id)}
             workouts={this.state.workouts}
-            addWeeklyGoalHandler={(newGoal) => this.addNewWeeklyGoal(newGoal)}
+            sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
             weeklyGoals={this.state.weeklyGoals}
             deadline={this.state.countdownConfig.deadline}
             defaultView={this.state.defaultView}

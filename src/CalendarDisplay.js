@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType, timeFields} from './configs';
+import {defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType, timeFields, weeklyGoalAddOrUpdateValidator} from './configs';
 import './App.css';
 
 var moment = require('moment-timezone');
@@ -34,7 +34,7 @@ class Calendar extends React.Component {
             goalID: PropTypes.string,
         })
       ).isRequired, 
-      addWeeklyGoalHandler: PropTypes.func.isRequired, 
+      sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
     };
   
     fillDayArray() {
@@ -123,7 +123,7 @@ class Calendar extends React.Component {
               days={days} 
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
               weeklyGoal={thisWeekGoal}
-              addWeeklyGoalHandler={(newGoal) => this.props.addWeeklyGoalHandler(newGoal)}
+              sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
             />
           </div>
         );
@@ -188,7 +188,7 @@ class WeekDisplay extends React.Component {
         goalValue: PropTypes.number,
         goalID: PropTypes.string
       }).isRequired,
-      addWeeklyGoalHandler: PropTypes.func.isRequired,
+      sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
     }; 
 
     render() {
@@ -216,7 +216,7 @@ class WeekDisplay extends React.Component {
       dayCells.push(
         <WeekGoalControl 
           goal={this.props.weeklyGoal}
-          addWeeklyGoalHandler={newGoal =>this.props.addWeeklyGoalHandler(newGoal)}
+          sendWeeklyGoalsToDBHandler={newGoals =>this.props.sendWeeklyGoalsToDBHandler(newGoals)}
         />
       );
   
@@ -236,14 +236,25 @@ class WeekGoalControl extends React.Component {
         goalValue: PropTypes.number,
         goalID: PropTypes.string,
       }).isRequired,
-      addWeeklyGoalHandler: PropTypes.func.isRequired,
+      sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
+    }
+
+    handleGoalChange(newValue) {
+      const newGoal = {...this.props.goal}
+      newGoal.goalValue = newValue;
+      this.props.sendWeeklyGoalsToDBHandler([newGoal]);
     }
 
     render() {
       if ("goalID" in this.props.goal) { // This week has a goal
         return (
           <div>
-            <h2>{this.props.goal.goalValue} Miles</h2>
+             <input 
+                type="number" 
+                value={this.props.goal.goalValue} 
+                onChange={(e) => this.handleGoalChange(Number(e.target.value))}
+              />
+              miles
           </div>
         );
       } else { // This week doesn't have a goal
@@ -254,7 +265,7 @@ class WeekGoalControl extends React.Component {
             onClick={() => {
               const newGoal = {...this.props.goal}
               newGoal.goalValue = 40;
-              this.props.addWeeklyGoalHandler(newGoal);
+              this.props.sendWeeklyGoalsToDBHandler([newGoal]);
             }}
           >
             Set Goal
