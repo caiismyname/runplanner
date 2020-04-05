@@ -305,7 +305,7 @@ class MainPanel extends React.Component {
     super(props);
 
     // This has to come before this.state is set. I don't know why.
-    this.toggleAddWorkoutModule = this.toggleAddWorkoutModule.bind(this);
+    this.toggleEditWorkoutModule = this.toggleEditWorkoutModule.bind(this);
     this.signinHandler = this.signinHandler.bind(this);
     this.onboardingHandler = this.onboardingHandler.bind(this);
 
@@ -314,8 +314,8 @@ class MainPanel extends React.Component {
       pendingUserLoading: true,
       userIsLoaded: false, // Has the user logged in via Google OAuth?
       userExists: false, // Is the Google userID in our DB?
-      addWorkoutModuleConfig: {
-        showingAddWorkoutModule: false,
+      editWorkoutModuleConfig: {
+        showingEditWorkoutModule: false,
         workoutID: "",
         workoutDate: "",
       },
@@ -468,9 +468,9 @@ class MainPanel extends React.Component {
     return ({startDate: startDate, endDate: endDate});
   }
 
-  toggleAddWorkoutModule(date="", id="") {
+  toggleEditWorkoutModule(date="", id="") {
     let newState = {
-      showingAddWorkoutModule: !this.state.addWorkoutModuleConfig.showingAddWorkoutModule
+      showingEditWorkoutModule: !this.state.editWorkoutModuleConfig.showingEditWorkoutModule
     };
     
     // If date is given, we're opening the module, and must populate the payload.
@@ -480,12 +480,12 @@ class MainPanel extends React.Component {
       if (id === "" ) {
         // this.updateDayContent(id, this.state.workoutHandler.generateEmptyPayload(date));
         this.createNewWorkout(date);
-        // Don't update AWMC state to show the module yet -- wait for object to be created in DB and FE to update.
-        // The createNewWorkout function will set AWMC to show.
+        // Don't update EWMC state to show the module yet -- wait for object to be created in DB and FE to update.
+        // The createNewWorkout function will set E to show.
       } else {
         newState.workoutID = id;
-        newState.showingAddWorkoutModule = true; // Override in case the module is already open and a new date is selected
-        this.setState({addWorkoutModuleConfig: newState});
+        newState.showingEditWorkoutModule = true; // Override in case the module is already open and a new date is selected
+        this.setState({editWorkoutModuleConfig: newState});
       };
     };
   }
@@ -546,9 +546,9 @@ class MainPanel extends React.Component {
       const newState = {workouts: displayWorkouts};
       // Clicking the "add workout" button won't trigger the opening of the AWM.
       // The AWM is opened here once the workout has been created in DB.
-      newState.addWorkoutModuleConfig = { ...this.state.addWorkoutModuleConfig};
-      newState.addWorkoutModuleConfig.workoutID = newWorkoutIDs[0];
-      newState.addWorkoutModuleConfig.showingAddWorkoutModule = true;
+      newState.editWorkoutModuleConfig = { ...this.state.editWorkoutModuleConfig};
+      newState.editWorkoutModuleConfig.workoutID = newWorkoutIDs[0];
+      newState.editWorkoutModuleConfig.showingEditWorkoutModule = true;
       this.setState(newState);
     });
   }
@@ -682,31 +682,31 @@ class MainPanel extends React.Component {
       this.state.defaultView === defaultView.CALENDAR 
       ? defaultView.COUNTDOWN
       : defaultView.CALENDAR;
-    const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
+    const editWorkoutModuleConfig = this.state.editWorkoutModuleConfig;
 
     let editWorkoutModulePayload;
-    if (this.state.addWorkoutModuleConfig.showingAddWorkoutModule 
-      && this.state.addWorkoutModuleConfig.workoutID !== "") {
+    if (this.state.editWorkoutModuleConfig.showingEditWorkoutModule 
+      && this.state.editWorkoutModuleConfig.workoutID !== "") {
         // Showing existing workout
-      editWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutID);
+      editWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(editWorkoutModuleConfig.workoutID);
     };
     // Need failure case
 
     const content =         
       <div style={{display: "flex"}}>
           <EditWorkoutModule
-            show={addWorkoutModuleConfig.showingAddWorkoutModule}
-            onClose={() => this.toggleAddWorkoutModule("", "")}
+            show={editWorkoutModuleConfig.showingEditWorkoutModule}
+            onClose={() => this.toggleEditWorkoutModule("", "")}
             updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
             payload={editWorkoutModulePayload}
-            id={addWorkoutModuleConfig.workoutID}
+            id={editWorkoutModuleConfig.workoutID}
           />
         <div style={{flex: "1"}}>
           <Calendar 
             currentMonth={currentMonth.getMonthInfo()}
             decrementMonthHandler={() => this.decrementMonth()}
             incrementMonthHandler={() => this.incrementMonth()} 
-            addNewWorkoutHandler={(date, id) => this.toggleAddWorkoutModule(date, id)}
+            addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
             workouts={this.state.workouts}
             sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
             weeklyGoals={this.state.weeklyGoals}
