@@ -1,8 +1,12 @@
+const GOOGLE_CLIENT_SECRET = require('./client_secret').getGoogleClientSecret();
+const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
+
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const runplannerRoutes = express.Router();
 const PORT = 4000;
 
@@ -88,6 +92,33 @@ runplannerRoutes.route("/getuser/:id").get(function(req, res){
             }
         }
     });
+})
+
+runplannerRoutes.route("/inituserserverauth").post(function(req, res) {
+    // TODO Check for X-Requested-With
+    const authCode = req.body.authCode;
+
+    // Send HTTP request to exchange authCode for auth token, refresh toekn
+    const http = new XMLHttpRequest();
+    const url = 'https://oauth2.googleapis.com/token';
+    const params = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'code': authCode,
+        'grant_type': 'authorization_code',
+        'redirect_uri': 'http://localhost:3000',
+    };
+
+    http.open("POST", url);
+    http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    http.send(JSON.stringify(params));
+
+    http.onreadystatechange = (e) => {
+        console.log(http.responseText)
+        
+        // save access, refresh token
+
+    }
 })
 
 //

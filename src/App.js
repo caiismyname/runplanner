@@ -307,6 +307,7 @@ class MainPanel extends React.Component {
     // This has to come before this.state is set. I don't know why.
     this.toggleEditWorkoutModule = this.toggleEditWorkoutModule.bind(this);
     this.signinHandler = this.signinHandler.bind(this);
+    this.authCodeHandler = this.authCodeHandler.bind(this);
     this.onboardingHandler = this.onboardingHandler.bind(this);
 
     this.state = {
@@ -314,6 +315,7 @@ class MainPanel extends React.Component {
       pendingUserLoading: true,
       userIsLoaded: false, // Has the user logged in via Google OAuth?
       userExists: false, // Is the Google userID in our DB?
+      newUserAuthCode: "", // Need to temporarily store new users' auth code for server-side access
       editWorkoutModuleConfig: {
         showingEditWorkoutModule: false,
         workoutID: "",
@@ -342,7 +344,7 @@ class MainPanel extends React.Component {
   }
 
   componentDidMount() {
-    const handler = this.signinHandler.bind(this);
+    const signInHandler = this.signinHandler.bind(this);
 
     window.gapi.load('auth2', function() {
       // Load+Init the auth2 instance here first. 
@@ -357,22 +359,17 @@ class MainPanel extends React.Component {
         // If so, handle the signed in user.
         // If not, go to login page to get a GoogleUser object.
         (googleAuth) => {
-          // unsure if this listener works / is necessary
-          // googleAuth.isSignedIn.listen(isSignedIn => {
-          //   handler(isSignedIn, googleAuth.currentUser.get());
-          // });
-
           if (googleAuth.isSignedIn.get()) {
-            handler(true, googleAuth.currentUser.get());
+            signInHandler(true);
           } else {
-            handler(false, null);
+            signInHandler(false);
           }
         },
         (err) => {console.log(err)} 
       );
     });
 
-    this.populateUser();
+    // this.populateUser();
   }
 
   //
@@ -392,35 +389,50 @@ class MainPanel extends React.Component {
       });
     });
   }
-  
-  signinHandler(isSuccess, googleUser) {
-    if (isSuccess) {
-      const profile = googleUser.getBasicProfile();
-      const userID = profile.getId();
-      const newState = {
-        userID: userID,
-        name: profile.getName(),
-        email: profile.getEmail(),
-        userIsLoaded: true,
-        pendingUserLoading: false,
-      };
 
-      axios.post(dbAddress + "checkuser", {"id": userID})
-      .then(res => {
-        newState["userExists"] = res.data.userExists;
-        this.setState(newState, () => this.populateUser());
-      });
-    } else {
-      this.setState({pendingUserLoading: false, userIsLoaded: false});
+  authCodeHandler(authCode) {
+      this.setState({newUserAuthCode: authCode});
+  }
+  
+  signinHandler(isSuccess) {
+    // Handles all sign-ins (both first-time and existing)
+    if (isSuccess) {
+        window.gapi.auth2.getAuthInstance().then(gAuth => {
+            const profile = gAuth.currentUser.get().getBasicProfile();
+            const userID = profile.getId();
+            const newState = {
+                userID: userID,
+                name: profile.getName(),
+                email: profile.getEmail(),
+                userIsLoaded: true,
+                pendingUserLoading: false,
+            };
+    
+            axios.post(dbAddress + "checkuser", {"id": userID})
+            .then(res => {
+                newState["userExists"] = res.data.userExists;
+                if (res.data.userExists) {
+                    this.setState(newState, () => this.populateUser());
+                } else {
+                    this.setState(newState);
+                }
+            });
+        })
+    } else { 
+        // If we've checked (pendingUserLoading) and didn't find a Google user (userIsLoaded),
+        // it means the user needs to go through Google onboarding.
+        this.setState({
+            pendingUserLoading: false, 
+            userIsLoaded: false, 
+        });
     };
   }
 
   onboardingHandler(startingDayOfWeek, defaultView, mainTimezone, defaultRunDuration) {
-    const userID = this.state.userID;
     this.initializeGCalCalendar(mainTimezone, (calendarID) => {
       axios.post(dbAddress + "adduser", 
         {
-          "_id": userID,
+          "_id": this.state.userID,
           "calendarID": calendarID,
           "config": {
             "startingDayOfWeek": startingDayOfWeek,
@@ -432,8 +444,21 @@ class MainPanel extends React.Component {
             "deadline": null,
           },
         })
-      .then(res => {
-        this.setState({userExists: true}, () => this.populateUser());
+      .then(_res => {
+        axios.post(dbAddress + "inituserserverauth",
+            {   
+                authCode: this.state.newUserAuthCode,
+            },
+            {headers: {'X-Requested-With': 'XMLHttpRequest'}},
+        ).then(_res => {
+            this.setState(
+                {
+                    userExists: true,
+                    newUserAuthCode: "",
+                }, 
+                () => this.populateUser()
+            );
+        });
       });
     });
   }
@@ -493,29 +518,30 @@ class MainPanel extends React.Component {
   //
   // Database access methods
   //
-
-  populateUser() {
-    if (this.state.userIsLoaded && this.state.userExists) {
-      axios.get(dbAddress + "getuser/" + this.state.userID)
-        .then(response => {
-          this.setState({
-            // TODO would it be easier if we just kept a "config" object in state?
-            "defaultView": response.data.config.defaultView,
-            "mainTimezone": response.data.config.mainTimezone,
-            "startingDayOfWeek": response.data.config.startingDayOfWeek,
-            "defaultRunDuration": response.data.config.defaultRunDuration,
-            "calendarID": response.data.calendarID,
-            "countdownConfig": response.data.countdownConfig,
-          });
-          
-          this.state.workoutHandler.setUserID(this.state.userID);
-          this.state.workoutHandler.setCalendarID(this.state.calendarID);
-          this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
-          this.populateWorkouts();
-          this.populateWeeklyGoals();
-        });
-      };
-  }
+    
+    populateUser() {
+        // The if-check is just a safety measure -- this should never be called in those are both false
+        if (this.state.userIsLoaded && this.state.userExists) {
+            axios.get(dbAddress + "getuser/" + this.state.userID)
+                .then(response => {
+            this.setState({
+                // TODO would it be easier if we just kept a "config" object in state?
+                "defaultView": response.data.config.defaultView,
+                "mainTimezone": response.data.config.mainTimezone,
+                "startingDayOfWeek": response.data.config.startingDayOfWeek,
+                "defaultRunDuration": response.data.config.defaultRunDuration,
+                "calendarID": response.data.calendarID,
+                "countdownConfig": response.data.countdownConfig,
+            });
+            
+            this.state.workoutHandler.setUserID(this.state.userID);
+            this.state.workoutHandler.setCalendarID(this.state.calendarID);
+            this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
+            this.populateWorkouts();
+            this.populateWeeklyGoals();
+            });
+        };
+    }
 
   // Database access methods -- Workouts
   populateWorkouts() {
@@ -670,11 +696,18 @@ class MainPanel extends React.Component {
     }
 
     if (!this.state.userIsLoaded) {
-      return(<LoginPage signinHandler={this.signinHandler}/>);
+      return(
+        <LoginPage 
+            signinHandler={this.signinHandler}
+            authCodeHandler={this.authCodeHandler}
+        />
+        );
     };
     
     if (!this.state.userExists) {
-      return(<NewUserOnboarding onboardingHandler={this.onboardingHandler}/>);
+        // User has now logged in via Google (userIsLoaded). 
+        // If they're not in our DB (userExists), then we need to perform our own onboarding.
+        return(<NewUserOnboarding onboardingHandler={this.onboardingHandler}/>);
     };
 
     const currentMonth = this.state.currentMonth;
