@@ -25,6 +25,16 @@ let User = new Schema({
             type: Date,
         }
     },
+    gTokens: {
+        accessToken: {
+            type: String,
+            // required: [true, 'User must have an accessToken to enable server-side event creation']
+        },
+        refreshToken: {
+            type: String,
+            // required: [true, 'User must have an accessToken to enable server-side event creation']
+        }
+    }
 });
 
 module.exports = mongoose.model("User", User);

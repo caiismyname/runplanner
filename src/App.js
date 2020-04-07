@@ -443,11 +443,16 @@ class MainPanel extends React.Component {
           "countdownConfig": {
             "deadline": null,
           },
+          "gTokens": {
+              'accessToken': '',
+              'refreshToken': '',
+          }
         })
       .then(_res => {
         axios.post(dbAddress + "inituserserverauth",
             {   
                 authCode: this.state.newUserAuthCode,
+                userID: this.state.userID,
             },
             {headers: {'X-Requested-With': 'XMLHttpRequest'}},
         ).then(_res => {

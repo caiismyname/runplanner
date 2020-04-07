@@ -27,7 +27,6 @@ class LoginPage extends React.Component {
         // Getting offline access permission also include the scopes asked for (calendar)
         // Pass off the auth code to set up server-side acccess
         window.gapi.auth2.getAuthInstance().grantOfflineAccess().then(authResult => {
-            console.log(authResult);
             if ('code' in authResult) {
                 this.props.authCodeHandler(authResult['code']);
             } else {

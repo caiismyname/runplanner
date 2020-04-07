@@ -114,10 +114,24 @@ runplannerRoutes.route("/inituserserverauth").post(function(req, res) {
     http.send(JSON.stringify(params));
 
     http.onreadystatechange = (e) => {
-        console.log(http.responseText)
-        
-        // save access, refresh token
+        console.log(http.readyState);
+        if (http.readyState === 4) { // status 4 = request is finished and response is ready
+            const response = JSON.parse(http.responseText); // response is undefined, but responseText is defined, for some reason
+            const accessToken = response.access_token;
+            const refreshToken = response.refresh_token;
 
+            Users.findById(req.body.userID, function(err, user) {
+                if (!user) {
+                    res.status(404).send("User not found");
+                } else {
+                    user.gTokens = {'accessToken': accessToken, 'refreshToken': refreshToken};
+        
+                    user.save()
+                        .then(user => {res.status(200).json("User gTokens stored")})
+                        .catch(err => res.status(404).send("Storing user gTokens failed"));
+                }
+            });
+        }
     }
 })
 
