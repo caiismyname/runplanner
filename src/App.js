@@ -64,7 +64,6 @@ class WorkoutHandler {
     this.calendarID = calendarID;
     this.workouts = {}; // Key = MongoId, Value = workout details
     this.dates = {}; // Key = date, Value = MongoId (to use as reference into above dict)
-    this.gEventIDs = {}; // Key = MongoId, Value = Google Calendar event ID
     this.modified = [];
     this.mainTimezone = mainTimezone;
     this.defaultRunDuration = defaultRunDuration;
@@ -121,23 +120,23 @@ class WorkoutHandler {
     // Send workout to Mongo
     axios.post(dbAddress + "addworkouts", {"toAdd": wrappedPayloads, "userID": this.userID})
     .then(res => {
-      const newWorkoutIDs = [];
-      const addedWorkouts = res.data.addedWorkouts;
-      for (let i = 0; i < addedWorkouts.length; i++) {
+        const newWorkoutIDs = [];
+
         // Once workout is confirmed in Mongo, add the workout to local state.
-        const newWorkoutID = addedWorkouts[i]._id;
-        newWorkoutIDs.push(newWorkoutID);
-        this.workouts[newWorkoutID] = addedWorkouts[i].payload;
-        
-        const date = moment(addedWorkouts[i].payload.date).format(serverDateFormat);
-        if (date in this.dates) {
-          this.dates[date].push(newWorkoutID);
-        } else {
-          this.dates[date] = [newWorkoutID];
-        };
-      }
-      
-      callback(this.generateDisplayWorkouts(), newWorkoutIDs);
+        res.data.workouts.forEach(workout => {
+            const newWorkoutID = workout._id;
+            newWorkoutIDs.push(newWorkoutID);
+            this.workouts[newWorkoutID] = workout.payload;
+         
+            const date = moment(workout.payload.date).format(serverDateFormat);
+            if (date in this.dates) {
+                this.dates[date].push(newWorkoutID);
+            } else {
+            this.dates[date] = [newWorkoutID];
+            };
+        });
+       
+        callback(this.generateDisplayWorkouts(), newWorkoutIDs);
     });
   }
 
@@ -191,6 +190,7 @@ class WorkoutHandler {
     callback(this.generateDisplayWorkouts());
   }
 
+  // this function is deprecated in favor of server-side gcal event updates
   updateGCalEvents(workoutIDs) {
     window.gapi.load('client:auth2', () => {   
       window.gapi.client.load("calendar", "v3", () => {
@@ -232,21 +232,23 @@ class WorkoutHandler {
     // TODO do these still need to be deduped?
     const modified = [...new Set(this.modified)]; // Dedup the list
     const workoutsToUpdate = modified.map(workoutID => {
-      let res = {};
-      res.payload = this.workouts[workoutID];
-      res.owner = this.userID;
-      res.id = workoutID;
-      res.gEventID = this.gEventIDs[workoutID];
-
-      return res;
+      return({
+        payload: this.workouts[workoutID],
+        owner: this.userID,
+        id: workoutID,
+      });
     });
     
     if (workoutsToUpdate.length > 0) {
-      this.updateGCalEvents(modified);
-      axios.post(dbAddress + "updateworkouts", {"toUpdate": workoutsToUpdate})
+      axios.post(dbAddress + "updateworkouts", {"toUpdate": workoutsToUpdate, 'userID': this.userID})
         .then(res => {
           console.log(res.data);
           this.modified = [];
+          
+          // Replace modified local workouts with the server equivalent, for data synchronicity
+          res.data.workouts.forEach(workout => {
+              this.workouts[workout._id] = workout.payload;
+          })
           callback(this.generateDisplayWorkouts());
         });
     };
@@ -264,7 +266,6 @@ class WorkoutHandler {
           response.data.forEach(workout => {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
             this.workouts[workout.id] = workout.payload;
-            this.gEventIDs[workout.id] = workout.gEventID;
             
             const formattedDate = moment(workout.payload.date).format(serverDateFormat);
             if (formattedDate in this.dates) {

@@ -192,22 +192,40 @@ runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
 });
 
 runplannerRoutes.route("/updateworkouts").post(function(req, res) {
+    let updatedWorkouts = [];
+    let promises = [];
     Object.keys(req.body.toUpdate).forEach((key,idx) => {
-        let workoutToUpdate = req.body.toUpdate[key];
-        Workouts.findById(workoutToUpdate.id, function(err, workout) {
-            if (!workout) {
-                res.status(404).send("Workout not found");
-            } else {
-                workout.payload = workoutToUpdate.payload;
-                workout.owner = workoutToUpdate.owner;
-                workout.gEventID = workoutToUpdate.gEventID;
-    
-                workout.save()
-                    .then(workout => {res.json("Workout updated")})
-                    .catch(err => {res.status(400).send("Workout update failed")});
-            }
+        const promise = new Promise(function(resolve, reject) {
+            let workoutToUpdate = req.body.toUpdate[key];
+            Workouts.findById(workoutToUpdate.id, function(err, workout) {
+                if (!workout) {
+                    res.status(404).send("Workout not found");
+                } else {
+                    workout.payload = workoutToUpdate.payload;
+                    workout.owner = workoutToUpdate.owner; // There shouldn't be a need to re-save owner 
+        
+                    workout.save()
+                        .then(workout => {
+                            updatedWorkouts.push(workout);
+                            resolve();
+                        })
+                        .catch(err => {
+                            reject();
+                        });
+                }
+            });
         });
+
+        promises.push(promise);
     });
+
+    Promise.all(promises).then(
+        () => {
+            // Update GCal events
+            authorizeToGoogle(req.body.userID, updatedWorkouts, res, updateGCalEvents);
+        },
+        () => res.status(400).send("Updating workout(s) failed")
+    )
 });
 
 runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req, res) {
@@ -220,7 +238,13 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
                 if (!item) {
                     res.status(404).send("Workout not found");
                 } else {
-                    res.json(item);
+                    let formattedItems = items.map(workout => { 
+                        return {  
+                            "payload": workout.payload,
+                            "id": workout._id,
+                        }
+                    });
+                    res.json(formattedItems);
                 }           
             }
         }
@@ -244,7 +268,6 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
                     return {  
                         "payload": workout.payload,
                         "id": workout._id,
-                        "gEventID": workout.gEventID,
                     }
                 });
                 res.json(formattedItems);
@@ -278,15 +301,24 @@ function authorizeToGoogle(userID, workouts, res, callback) {
   }
 
 function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res) {
+    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res, false);
+}
+
+function updateGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res) {
+    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res, true);
+}
+
+function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res, isUpdate) {
     const calendar = google.calendar({version: 'v3', auth});
     let workoutsToReturn = [];
     let promises = [];
+
     workouts.forEach(workout => {
         const title = workout.payload.milage.goal === 0 
             ? "New run" 
             : workout.payload.milage.goal + " mile run";
         const promise = new Promise(function(resolve, reject) {
-            calendar.events.insert({
+            const eventResource = {
                 'calendarId': calendarID,
                 'resource': {
                     'summary': title,
@@ -298,12 +330,18 @@ function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts,
                         'dateTime': moment(workout.payload.date).add(defaultRunDuration, "minutes").toISOString(),
                         'timeZone': timezone
                     }
-                },
-            }).then(event => {
+                }
+            };
+
+            const gCalCallback = (event) => {
+                // Save the workout with gEventID if adding a new workout
+                // Then (for both update and add) add the most up-to-date workout object 
+                // to the list, and resolve the promise.
                 Workouts.findById(workout._id, function(err, workout) {
                     if (workout) {
-                        workout.gEventID = event.data.id;
-                        workout.save()
+                        if (!isUpdate) {
+                            workout.gEventID = event.data.id;
+                            workout.save()
                             .then(workout => {
                                 workoutsToReturn.push(workout);
                                 resolve();
@@ -312,11 +350,24 @@ function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts,
                                 console.log(err);
                                 reject();
                             });
+                        } else {
+                            workoutsToReturn.push(workout);
+                            resolve();
+                        }
                     } else {
                         console.log("Workout " + workout._id + " not found: " + err);
+                        reject();
                     }
                 });
-            });
+            }
+
+            if (isUpdate) {
+                eventResource.eventId = workout.gEventID;
+                // In the future, may need to override the endtime if we allow custom times
+                calendar.events.update(eventResource).then(gCalCallback);   
+            } else {
+                calendar.events.insert(eventResource).then(gCalCallback);
+            }
         });
 
         promises.push(promise);
@@ -324,19 +375,18 @@ function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts,
 
     Promise.all(promises).then(
         () => {
+            const verb = isUpdate ? "update" : "add";
             res.status(200).json({
-                "message": workoutsToReturn.length + " workout(s) added successfully", 
-                "addedWorkouts": workoutsToReturn,
+                "message": workoutsToReturn.length + " workout(s) " + verb + " successfully", 
+                "workouts": workoutsToReturn,
             })
         },
-        () => res.status(400).send("Adding new workout(s) failed")
+        () => {
+            const verb = isUpdate ? "update" : "add";
+            res.status(400).send(verb + " new workout(s) failed");
+        }
     );
 }  
-
-function updateGCalEvent(auth, calendarID) {
-
-}
-
 
 //
 //
