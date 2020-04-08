@@ -8,7 +8,7 @@ let Workout = new Schema({
     },
     gEventID: {
         type: String,
-        required: [true, "Each workout must be connected to a Google Calendar Event"],
+        // required: [true, "Each workout must be connected to a Google Calendar Event"],
     },
     payload: {
         type: {

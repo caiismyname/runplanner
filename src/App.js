@@ -115,33 +115,29 @@ class WorkoutHandler {
       wrappedPayload.payload = payload;
       wrappedPayload.owner = this.userID;
       return (wrappedPayload);
-      // addGCalEvent() will add `gEventID` to this object before passing to Mongo
     });
 
-    this.addGCalEvents(wrappedPayloads, (workouts) => {
-      // Send workout to Mongo
-      axios.post(dbAddress + "addworkouts", {"toAdd": wrappedPayloads})
-      .then(res => {
-        console.log(res.data);
-        const newWorkoutIDs = [];
-        for (let i = 0; i < res.data.ids.length; i++) {
-          // Once workout is confirmed in Mongo, add the workout to local state.
-          // This assumes that workout IDs are returned in the order in which the workouts were sent
-          const newWorkoutID = res.data.ids[i];
-          newWorkoutIDs.push(newWorkoutID);
-          this.workouts[newWorkoutID] = workouts[i].payload;
-          this.gEventIDs[newWorkoutID] = workouts[i].gEventID;
-          
-          const date = moment(workouts[i].payload.date).format(serverDateFormat);
-          if (date in this.dates) {
-            this.dates[date].push(newWorkoutID);
-          } else {
-            this.dates[date] = [newWorkoutID];
-          };
-        }
+    // Send workout to Mongo
+    axios.post(dbAddress + "addworkouts", {"toAdd": wrappedPayloads, "userID": this.userID})
+    .then(res => {
+      const newWorkoutIDs = [];
+      const addedWorkouts = res.data.addedWorkouts;
+      for (let i = 0; i < addedWorkouts.length; i++) {
+        // Once workout is confirmed in Mongo, add the workout to local state.
+        // This assumes that workout IDs are returned in the order in which the workouts were sent
+        const newWorkoutID = addedWorkouts[i]._id;
+        newWorkoutIDs.push(newWorkoutID);
+        this.workouts[newWorkoutID] = addedWorkouts[i].payload;
         
-        callback(this.generateDisplayWorkouts(), newWorkoutIDs);
-      });
+        const date = moment(addedWorkouts[i].payload.date).format(serverDateFormat);
+        if (date in this.dates) {
+          this.dates[date].push(newWorkoutID);
+        } else {
+          this.dates[date] = [newWorkoutID];
+        };
+      }
+      
+      callback(this.generateDisplayWorkouts(), newWorkoutIDs);
     });
   }
 
@@ -383,7 +379,6 @@ class MainPanel extends React.Component {
           'summary': gCalDefaultName, // Summary is the calendar name
           'timeZone': timezone,
         }).then((response) => { // For some reason, this call only works if you attach a .then() to it
-          console.log(response);
           callback(response.result.id);
         });
       });

@@ -1,5 +1,6 @@
 const GOOGLE_CLIENT_SECRET = require('./client_secret').getGoogleClientSecret();
 const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
+const GOOGLE_REDIRECT_URIS = require('./client_secret').getRedirectURIs();
 
 const express = require("express");
 const app = express();
@@ -8,6 +9,8 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const runplannerRoutes = express.Router();
+const {google} = require('googleapis');
+const moment = require('moment-timezone');
 const PORT = 4000;
 
 let Workouts = require("./runplanner-workout.model");
@@ -142,8 +145,8 @@ runplannerRoutes.route("/inituserserverauth").post(function(req, res) {
 //
 
 runplannerRoutes.route("/addworkouts").post(function(req, res) {
-    var newIDs = [];
     let promises = [];
+    let fullWorkouts = [];
     // Oh god. This assumes workout order will be preserved across all calls.
     for (let i = 0; i < req.body.toAdd.length; i++) {
         const w = req.body.toAdd[i];
@@ -155,7 +158,7 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
                         if (err) {
                             reject();
                         } else {
-                            newIDs.splice(i, 1, workout._id);
+                            fullWorkouts.push(workout);
                             console.log("Adding workout: " + workout._id);
                             resolve();
                         }
@@ -169,10 +172,8 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
 
     Promise.all(promises).then(
         () => {
-            res.status(200).json({
-                "message": newIDs.length + " workout(s) added successfully", 
-                "ids": newIDs,
-            });
+            // Add GCal event
+            authorizeToGoogle(req.body.userID, fullWorkouts, res, addGCalEvents);
         }, 
         () => res.status(400).send("Adding new workout(s) failed")
     );
@@ -251,6 +252,88 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
         }
     );
 })
+
+
+
+//
+//
+// Google Calendar Access
+//
+//
+
+function authorizeToGoogle(userID, workouts, res, callback) {
+    const oAuth2Client = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URIS);
+    Users.findById(userID, (err, user) => {
+        const tokens = {
+            'access_token': user.gTokens.accessToken,
+            'refresh_token': user.gTokens.refreshToken,
+        };
+        const calendarID = user.calendarID;
+        const timezone = user.mainTimezone;
+        const defaultRunDuration = user.config.defaultRunDuration;
+        
+        oAuth2Client.setCredentials(tokens);
+        callback(oAuth2Client, calendarID, timezone, defaultRunDuration, workouts, res);
+    });
+  }
+
+function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res) {
+    const calendar = google.calendar({version: 'v3', auth});
+    let workoutsToReturn = [];
+    let promises = [];
+    workouts.forEach(workout => {
+        const title = workout.payload.milage.goal === 0 ? "New run" : workout.payload.milage.goal + " mile run";
+        const promise = new Promise(function(resolve, reject) {
+            calendar.events.insert({
+                'calendarId': calendarID,
+                'resource': {
+                    'summary': title,
+                    'start': {
+                        'dateTime': workout.payload.date,
+                        'timeZone': timezone
+                    },
+                    'end': {
+                        'dateTime': moment(workout.payload.date).add(defaultRunDuration, "minutes").toISOString(),
+                        'timeZone': timezone
+                    }
+                }
+            }).then(event => {
+                Workouts.findById(workout._id, function(err, workout) {
+                    if (workout) {
+                        workout.gEventID = event.data.id;
+                        workout.save()
+                            .then(workout => {
+                                workoutsToReturn.push(workout);
+                                resolve();
+                            })
+                            .catch(err => {
+                                console.log(err);
+                                reject();
+                            });
+                    } else {
+                        console.log("Workout " + workout._id + " not found: " + err);
+                    }
+                });
+            });
+        });
+
+        promises.push(promise);
+    });
+
+    Promise.all(promises).then(
+        () => {
+            res.status(200).json({
+                "message": workoutsToReturn.length + " workout(s) added successfully", 
+                "addedWorkouts": workoutsToReturn,
+            })
+        },
+        () => res.status(400).send("Adding new workout(s) failed")
+    );
+}  
+
+function updateGCalEvent(auth, calendarID) {
+
+}
 
 
 //
