@@ -147,7 +147,7 @@ runplannerRoutes.route("/inituserserverauth").post(function(req, res) {
 runplannerRoutes.route("/addworkouts").post(function(req, res) {
     let promises = [];
     let fullWorkouts = [];
-    // Oh god. This assumes workout order will be preserved across all calls.
+
     for (let i = 0; i < req.body.toAdd.length; i++) {
         const w = req.body.toAdd[i];
         const promise = new Promise(function(resolve, reject) {
@@ -164,7 +164,7 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
                         }
                     });
                 },
-                () => reject()
+                () => {reject()}
             );
         });
         promises.push(promise);
@@ -282,7 +282,9 @@ function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts,
     let workoutsToReturn = [];
     let promises = [];
     workouts.forEach(workout => {
-        const title = workout.payload.milage.goal === 0 ? "New run" : workout.payload.milage.goal + " mile run";
+        const title = workout.payload.milage.goal === 0 
+            ? "New run" 
+            : workout.payload.milage.goal + " mile run";
         const promise = new Promise(function(resolve, reject) {
             calendar.events.insert({
                 'calendarId': calendarID,
@@ -296,7 +298,7 @@ function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts,
                         'dateTime': moment(workout.payload.date).add(defaultRunDuration, "minutes").toISOString(),
                         'timeZone': timezone
                     }
-                }
+                },
             }).then(event => {
                 Workouts.findById(workout._id, function(err, workout) {
                     if (workout) {

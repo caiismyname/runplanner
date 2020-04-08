@@ -111,9 +111,10 @@ class WorkoutHandler {
 
   addWorkouts(payloads, callback) {
     const wrappedPayloads = payloads.map(payload => {
-      const wrappedPayload = {};
-      wrappedPayload.payload = payload;
-      wrappedPayload.owner = this.userID;
+      const wrappedPayload = {
+        payload: payload,
+        owner: this.userID,
+      };
       return (wrappedPayload);
     });
 
@@ -124,7 +125,6 @@ class WorkoutHandler {
       const addedWorkouts = res.data.addedWorkouts;
       for (let i = 0; i < addedWorkouts.length; i++) {
         // Once workout is confirmed in Mongo, add the workout to local state.
-        // This assumes that workout IDs are returned in the order in which the workouts were sent
         const newWorkoutID = addedWorkouts[i]._id;
         newWorkoutIDs.push(newWorkoutID);
         this.workouts[newWorkoutID] = addedWorkouts[i].payload;
@@ -141,6 +141,7 @@ class WorkoutHandler {
     });
   }
 
+  // this function is deprecated in favor of server-side gcal event creation
   addGCalEvents(payloads, callback) {
     window.gapi.load('client:auth2', () => {   
       window.gapi.client.load("calendar", "v3", () => {
