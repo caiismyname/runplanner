@@ -94,7 +94,7 @@ class WorkoutHandler {
     date = moment.tz(date, this.mainTimezone);
     
     return ({
-      date: date.toISOString(),
+      startDate: date.toISOString(),
       content: "",
       type: "",
       milage: {
@@ -128,7 +128,7 @@ class WorkoutHandler {
             newWorkoutIDs.push(newWorkoutID);
             this.workouts[newWorkoutID] = workout.payload;
          
-            const date = moment(workout.payload.date).format(serverDateFormat);
+            const date = moment(workout.payload.startDate).format(serverDateFormat);
             if (date in this.dates) {
                 this.dates[date].push(newWorkoutID);
             } else {
@@ -153,11 +153,11 @@ class WorkoutHandler {
               'resource': {
                 'summary': "New run",
                 'start': {
-                  'dateTime': payload.date,
+                  'dateTime': payload.startDate,
                   'timeZone': this.timeZone
                 },
                 'end': {
-                  'dateTime': moment(payload.date).add(this.defaultRunDuration, "minutes").toISOString(),
+                  'dateTime': moment(payload.startDate).add(this.defaultRunDuration, "minutes").toISOString(),
                   'timeZone': this.timeZone
                 }
               }
@@ -200,7 +200,7 @@ class WorkoutHandler {
           const gEventID = this.gEventIDs[workoutID];
           // const newTitle = this.workouts[workoutID].content;
           const newTitle = this.workouts[workoutID].milage.goal + " mile run";
-          const newStart = this.workouts[workoutID].date;
+          const newStart = this.workouts[workoutID].startDate;
 
           batch.add(window.gapi.client.calendar.events.update(
             {
@@ -267,7 +267,7 @@ class WorkoutHandler {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
             this.workouts[workout.id] = workout.payload;
             
-            const formattedDate = moment(workout.payload.date).format(serverDateFormat);
+            const formattedDate = moment(workout.payload.startDate).format(serverDateFormat);
             if (formattedDate in this.dates) {
               this.dates[formattedDate].push(workout.id);
             } else {

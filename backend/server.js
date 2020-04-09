@@ -254,7 +254,7 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
 runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
     Workouts.find(
         { 
-            "payload.date": { 
+            "payload.startDate": { 
                 $gte: new Date(req.params.gtedate), 
                 $lte: new Date(req.params.ltedate)
             },
@@ -323,11 +323,11 @@ function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts
                 'resource': {
                     'summary': title,
                     'start': {
-                        'dateTime': workout.payload.date,
+                        'dateTime': workout.payload.startDate,
                         'timeZone': timezone
                     },
                     'end': {
-                        'dateTime': moment(workout.payload.date).add(defaultRunDuration, "minutes").toISOString(),
+                        'dateTime': moment(workout.payload.startDate).add(defaultRunDuration, "minutes").toISOString(),
                         'timeZone': timezone
                     }
                 }
@@ -490,6 +490,10 @@ runplannerRoutes.route("/deleteweeklygoal/:id").post(function(req, res) {
                 .catch(err => {res.status(400).send("Deleting weekly goal failed")});
         }
     });
+});
+
+runplannerRoutes.route("/autoFillWeek").post(function(req, res) {
+
 });
 
 // Misc

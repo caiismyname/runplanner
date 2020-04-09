@@ -206,7 +206,7 @@ class WeekDisplay extends React.Component {
               // This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
               date={value ? value.date : ""}
               payloads={value.payloads ? value.payloads : [{payload: {"content": "", "type": "", "date": ""}, id: ""}]} 
-              // updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
+              updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
             />
           </div>
@@ -298,7 +298,7 @@ class DayCell extends React.Component {
                     <div 
                         key={workout.id}
                         style={{border: "1px solid green"}} 
-                        onClick={() => this.props.addNewWorkoutHandler(workout.payload.date, workout.id)}
+                        onClick={() => this.props.addNewWorkoutHandler(workout.payload.startDate, workout.id)}
                     >
                         <h3>{workout.payload.type}</h3>
                         <p>{workout.payload.content}</p>

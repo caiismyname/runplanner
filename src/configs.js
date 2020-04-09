@@ -14,7 +14,7 @@ export const gCalDefaultName = "RunPlanner";
 export const workoutFields = {
   TYPE: "type",
   CONTENT: "content",
-  DATE: "date",
+  STARTDATE: "startDate",
   MILAGE_GOAL: "milage.goal",
   MILAGE_ACTUAL: "milage.actual",
 };

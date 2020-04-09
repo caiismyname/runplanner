@@ -43,12 +43,12 @@ class EditWorkoutModule extends React.Component {
 
     return (
       <div style={{modalStyle}}>
-        <h1>{moment(this.props.payload.date).format(dateDisplayFormat)}</h1>
+        <h1>{moment(this.props.payload.startDate).format(dateDisplayFormat)}</h1>
         <h2>Time</h2>
         <TimeEntry 
-          date={this.props.payload.date}
+          date={this.props.payload.startDate}
           updateTimeCallback={(newDateTime) => {
-            this.handleWorkoutChange(newDateTime, workoutFields.DATE);
+            this.handleWorkoutChange(newDateTime, workoutFields.STARTDATE);
           }}
         />
 

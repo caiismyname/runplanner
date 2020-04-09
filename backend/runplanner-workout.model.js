@@ -18,7 +18,8 @@ let Workout = new Schema({
         content: {
             type: String,
         },
-        date: {
+        startDate: {
+            // This is technically a datetime
             type: Date,
         },
         milage: {
@@ -29,6 +30,10 @@ let Workout = new Schema({
                 type: Number,
             },
         },
+        creationType: {
+            type: String,
+            enum: ["owner", "autoFillWeek", "repeatingWorkout"],
+        }
     }
 });
 
