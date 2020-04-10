@@ -35,6 +35,7 @@ class Calendar extends React.Component {
         })
       ).isRequired, 
       sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
+      autofillWeeklyGoalHandler: PropTypes.func,
     };
   
     fillDayArray() {
@@ -124,6 +125,7 @@ class Calendar extends React.Component {
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
               weeklyGoal={thisWeekGoal}
               sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
+              autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
             />
           </div>
         );
@@ -189,6 +191,7 @@ class WeekDisplay extends React.Component {
         goalID: PropTypes.string
       }).isRequired,
       sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
+      autofillWeeklyGoalHandler: PropTypes.func,
     }; 
 
     render() {
@@ -206,7 +209,7 @@ class WeekDisplay extends React.Component {
               // This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
               date={value ? value.date : ""}
               payloads={value.payloads ? value.payloads : [{payload: {"content": "", "type": "", "date": ""}, id: ""}]} 
-              updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
+              // updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
             />
           </div>
@@ -216,7 +219,8 @@ class WeekDisplay extends React.Component {
       dayCells.push(
         <WeekGoalControl 
           goal={this.props.weeklyGoal}
-          sendWeeklyGoalsToDBHandler={newGoals =>this.props.sendWeeklyGoalsToDBHandler(newGoals)}
+          sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
+          autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
         />
       );
   
@@ -237,6 +241,7 @@ class WeekGoalControl extends React.Component {
         goalID: PropTypes.string,
       }).isRequired,
       sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
+      autofillWeeklyGoalHandler: PropTypes.func,
     }
 
     handleGoalChange(newValue) {
@@ -255,6 +260,7 @@ class WeekGoalControl extends React.Component {
                 onChange={(e) => this.handleGoalChange(Number(e.target.value))}
               />
               miles
+              <button onClick={() => this.props.autofillWeeklyGoalHandler(this.props.goal.goalID)}> Autofill</button>
           </div>
         );
       } else { // This week doesn't have a goal

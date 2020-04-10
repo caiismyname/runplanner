@@ -3,7 +3,7 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName} from './configs';
+import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import EditWorkoutModule from "./EditWorkoutModule";
@@ -59,7 +59,7 @@ class MonthHandler {
 
 class WorkoutHandler {
   // Initialize to empty since MainPanel won't have pulled from DB yet when WorkoutHandler is constructed.
-  constructor(userID = "", calendarID = "", mainTimezone = "", defaultRunDuration = 60) {
+  constructor(userID = "", calendarID = "", mainTimezone = "", defaultStartTime = {hour: 7, minute: 0}, defaultRunDuration = 60) {
     this.userID = userID;
     this.calendarID = calendarID;
     this.workouts = {}; // Key = MongoId, Value = workout details
@@ -67,6 +67,7 @@ class WorkoutHandler {
     this.modified = [];
     this.mainTimezone = mainTimezone;
     this.defaultRunDuration = defaultRunDuration;
+    this.defaultStartTime = defaultStartTime; // 24 hour time
   }
 
   setUserID(id) {
@@ -85,12 +86,14 @@ class WorkoutHandler {
     this.calendarID = id;
   }
 
-  generateEmptyPayload(givenDate) {
-    const defaultStartTime = {hour: 7, minute: 0}; // 24 hour time
+  setDefaultStartTime(time) {
+    this.defaultStartTime = time;
+  }
 
+  generateEmptyPayload(givenDate) {
     let date = moment(givenDate);
-    date.hour(defaultStartTime.hour);
-    date.minute(defaultStartTime.minute);
+    date.hour(this.defaultStartTime.hour);
+    date.minute(this.defaultStartTime.minute);
     date = moment.tz(date, this.mainTimezone);
     
     return ({
@@ -101,6 +104,7 @@ class WorkoutHandler {
         goal: 0,
         // actual: 0,
       },
+      creationType: creationTypes.OWNER,
     });
   }
 
@@ -262,6 +266,7 @@ class WorkoutHandler {
       + startDate + "/"
       + endDate)
       .then(response => {
+        console.log(response);
         if (response) {
           response.data.forEach(workout => {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
@@ -329,13 +334,16 @@ class MainPanel extends React.Component {
       email: "",
 
       // from Mongo
-      calendarID: "",
-      defaultView: defaultView.CALENDAR,
-      mainTimezone: "America/Los_Angeles",
-      startingDayOfWeek: 0,
-      defaultRunDuration: 60,
-      countdownConfig: {
-        deadline: moment().format(serverDateFormat)
+      userConfig: {
+        calendarID: "",
+        defaultView: defaultView.CALENDAR,
+        mainTimezone: "America/Los_Angeles",
+        startingDayOfWeek: 0,
+        defaultRunDuration: 60,
+        defaultStartTime: {hour: 7, minute: 0},
+        countdownConfig: {
+          deadline: moment().format(serverDateFormat)
+        },
       },
       weeklyGoals: {},
     }
@@ -425,28 +433,31 @@ class MainPanel extends React.Component {
     };
   }
 
-  onboardingHandler(startingDayOfWeek, defaultView, mainTimezone, defaultRunDuration) {
+  onboardingHandler(startingDayOfWeek, defaultView, mainTimezone, defaultRunDuration, defaultStartTime, autofillDistribution) {
     this.initializeGCalCalendar(mainTimezone, (calendarID) => {
       axios.post(dbAddress + "adduser", 
         {
-          "_id": this.state.userID,
-          "calendarID": calendarID,
-          "config": {
-            "startingDayOfWeek": startingDayOfWeek,
-            "defaultView": defaultView,
-            "mainTimezone": mainTimezone,
-            "defaultRunDuration": defaultRunDuration,
+          _id: this.state.userID,
+          calendarID: calendarID,
+          config: {
+            startingDayOfWeek: startingDayOfWeek,
+            defaultView: defaultView,
+            mainTimezone: mainTimezone,
+            defaultRunDuration: defaultRunDuration,
+            countdownConfig: {
+              deadline: null,
+            },
+            defaultStartTime: defaultStartTime,
+            autofillDistribution: autofillDistribution,
           },
-          "countdownConfig": {
-            "deadline": null,
-          },
-          "gTokens": {
-              'accessToken': '',
-              'refreshToken': '',
+
+          gTokens: {
+              accessToken: '',
+              refreshToken: '',
           }
         })
       .then(_res => {
-        axios.post(dbAddress + "inituserserverauth",
+        axios.post(dbAddress + 'inituserserverauth',
             {   
                 authCode: this.state.newUserAuthCode,
                 userID: this.state.userID,
@@ -484,12 +495,12 @@ class MainPanel extends React.Component {
   getCurrentDisplayStartEnd() {
     let startDate;
     let endDate;
-    if (this.state.defaultView === defaultView.CALENDAR) {
+    if (this.state.userConfig.defaultView === defaultView.CALENDAR) {
       startDate = this.state.currentMonth.getMonthStart();
       endDate = this.state.currentMonth.getMonthEnd();
     } else { // Countdown mode
       startDate = moment().format(serverDateFormat);
-      endDate = this.state.countdownConfig.deadline;
+      endDate = this.state.userConfig.countdownConfig.deadline;
     }
 
     return ({startDate: startDate, endDate: endDate});
@@ -527,18 +538,13 @@ class MainPanel extends React.Component {
             axios.get(dbAddress + "getuser/" + this.state.userID)
                 .then(response => {
             this.setState({
-                // TODO would it be easier if we just kept a "config" object in state?
-                "defaultView": response.data.config.defaultView,
-                "mainTimezone": response.data.config.mainTimezone,
-                "startingDayOfWeek": response.data.config.startingDayOfWeek,
-                "defaultRunDuration": response.data.config.defaultRunDuration,
-                "calendarID": response.data.calendarID,
-                "countdownConfig": response.data.countdownConfig,
+                userConfig: response.data.config,
             });
             
             this.state.workoutHandler.setUserID(this.state.userID);
-            this.state.workoutHandler.setCalendarID(this.state.calendarID);
-            this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
+            this.state.workoutHandler.setCalendarID(this.state.userConfig.calendarID);
+            this.state.workoutHandler.setMainTimezone(this.state.userConfig.mainTimezone);
+            this.state.workoutHandler.setDefaultStartTime(this.state.userConfig.defaultStartTime);
             this.populateWorkouts();
             this.populateWeeklyGoals();
             });
@@ -684,6 +690,16 @@ class MainPanel extends React.Component {
     };
   }
 
+  autofillWeeklyGoal(goalID) {
+    axios.post(dbAddress + "autofillweek", {userID: this.state.userID, goalID: goalID})
+      .then(res => {
+        console.log(res.data);
+        res.data.workouts.forEach(workout => {
+          /// HOW DO WE GET THESE INTO THE WORKOUT HANDLER?
+        })
+      })
+  }
+
   deleteWeeklyGoal(goalID) {
 
   }
@@ -744,10 +760,11 @@ class MainPanel extends React.Component {
             addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
             workouts={this.state.workouts}
             sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
+            autofillWeeklyGoalHandler={(goalID) => this.autofillWeeklyGoal(goalID)}
             weeklyGoals={this.state.weeklyGoals}
-            deadline={this.state.countdownConfig.deadline}
-            defaultView={this.state.defaultView}
-            startingDayOfWeek={this.state.startingDayOfWeek}
+            deadline={this.state.userConfig.countdownConfig.deadline}
+            defaultView={this.state.userConfig.defaultView}
+            startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
           />
         </div>
       </div>;

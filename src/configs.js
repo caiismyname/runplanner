@@ -23,6 +23,19 @@ export const timeFields = {
   MINUTE: "minute",
 };
 export const dateDisplayFormat = "M/DD/YY";
+export const creationTypes = {
+  OWNER: "owner",
+  AUTOFILLWEEK: "autofillWeek", 
+  REPEATINGWORKOUT: "repeatingWorkout",
+};
+
+export const autofillDistributions = {
+  EVEN: "even", 
+  RANDOM: "random",
+  PYRAMID: "pyramid", 
+  STAIRCASEUP: "staircaseUp", 
+  STAIRCASEDOWN: "staircaseDown",
+};
 
 // Payload is consistently repeated across PropTypes
 export const payloadWithIDPropType = PropTypes.shape({

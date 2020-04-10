@@ -12,6 +12,7 @@ const runplannerRoutes = express.Router();
 const {google} = require('googleapis');
 const moment = require('moment-timezone');
 const PORT = 4000;
+const serverDateFormat = "YYYY-MM-DD"; // Gotta figure out how to import from configs.js
 
 let Workouts = require("./runplanner-workout.model");
 let Users = require("./runplanner-user.model");
@@ -21,9 +22,17 @@ app.use(cors());
 app.use(bodyParser.json());
 
 function proceedIfUserExists(id, successCallback, failureCallback) {
-    Users.findOne({ _id: id }).select("_id").lean().then(result => {
-        result ? successCallback() : failureCallback();
-    }).catch(e => failureCallback());
+    // Users.findOne({ _id: id }).select("_id").lean().then(result => {
+    //     result ? successCallback(result) : failureCallback();
+    // }).catch(e => failureCallback());)
+
+    Users.findById(id, function(err, result) {
+        if (result) {
+            successCallback(result);
+        } else {
+            failureCallback(err);
+        }
+    })
 }
 
 mongoose.connect(
@@ -74,7 +83,7 @@ runplannerRoutes.route("/updateuser").post(function(req, res) {
             res.status(404).send("User not found");
         } else {
             user.config = req.body.config;
-            user.countdownConfig = req.body.countdownConfig;
+            // App should never invoke an update of gTokens or calendarID
 
             user.save()
                 .then(user => {res.status(200).json("User updated")})
@@ -144,38 +153,59 @@ runplannerRoutes.route("/inituserserverauth").post(function(req, res) {
 //
 //
 
-runplannerRoutes.route("/addworkouts").post(function(req, res) {
+function addWorkouts(workoutsToAdd, userID, successCallback, failureCallback) {
     let promises = [];
     let fullWorkouts = [];
 
-    for (let i = 0; i < req.body.toAdd.length; i++) {
-        const w = req.body.toAdd[i];
+    console.log("adding workouts");
+    console.log(workoutsToAdd);
+
+    workoutsToAdd.forEach(w => {
         const promise = new Promise(function(resolve, reject) {
             proceedIfUserExists(w.owner, 
-                (i) => {
+                () => {
+                    console.log("user exists");
                     let workout = new Workouts(w);
-                    workout.save(function(err, workout) {
+                    workout.save(function(err, savedWorkout) {
                         if (err) {
+                            console.log(err);
                             reject();
                         } else {
-                            fullWorkouts.push(workout);
-                            console.log("Adding workout: " + workout._id);
+                            fullWorkouts.push(savedWorkout);
+                            console.log("Adding workout: " + savedWorkout._id);
                             resolve();
                         }
                     });
                 },
-                () => {reject()}
+                () => {
+                    console.log("user does not exist");
+                    reject();
+                }
             );
         });
         promises.push(promise);
-    };
+    });
 
     Promise.all(promises).then(
         () => {
             // Add GCal event
-            authorizeToGoogle(req.body.userID, fullWorkouts, res, addGCalEvents);
+            authorizeToGoogle(userID, fullWorkouts, successCallback, failureCallback, addGCalEvents);
         }, 
-        () => res.status(400).send("Adding new workout(s) failed")
+        () => failureCallback()
+    );
+}
+
+runplannerRoutes.route("/addworkouts").post(function(req, res) {
+    addWorkouts(req.body.toAdd, req.body.userID, 
+        // success callback
+        (workoutsToReturn) => {
+            res.status(200).json({
+                "message": workoutsToReturn.length + " workout(s) added successfully", 
+                "workouts": workoutsToReturn}
+            );
+        },
+        // failure callback
+        () => {res.status(400).send("Adding new workout(s) failed")}
     );
 });
 
@@ -221,10 +251,18 @@ runplannerRoutes.route("/updateworkouts").post(function(req, res) {
 
     Promise.all(promises).then(
         () => {
+            const successCallback = (workoutsToReturn) => {
+                res.status(200).json({
+                    "message": workoutsToReturn.length + " workout(s) added successfully", 
+                    "workouts": workoutsToReturn}
+                );
+            };
+
+            const failureCallback = () => {res.status(400).send("Updating workout(s) failed")};
             // Update GCal events
-            authorizeToGoogle(req.body.userID, updatedWorkouts, res, updateGCalEvents);
+            authorizeToGoogle(req.body.userID, updatedWorkouts, successCallback, failureCallback, updateGCalEvents);
         },
-        () => res.status(400).send("Updating workout(s) failed")
+        () => failureCallback()
     )
 });
 
@@ -251,29 +289,44 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
     );
 });
 
-runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
-    Workouts.find(
-        { 
-            "payload.startDate": { 
-                $gte: new Date(req.params.gtedate), 
-                $lte: new Date(req.params.ltedate)
+function getWorkoutsForOwnerForDateRange(ownerID, startDate, endDate, callback) {
+    proceedIfUserExists(ownerID, (owner) => {
+        Workouts.find(
+            { 
+                "payload.startDate": { 
+                    $gte: new Date(startDate), 
+                    $lte: new Date(endDate)
+                },
+                "owner": ownerID
             },
-            "owner": req.params.id
-        },
-        (err, items) => {
-            if (err) {
-                console.log(err);
-            } else {
-                let formattedItems = items.map(workout => { 
-                    return {  
-                        "payload": workout.payload,
-                        "id": workout._id,
-                    }
-                });
-                res.json(formattedItems);
+            (err, items) => {
+                if (err) {
+                    console.log(err);
+                    callback(null);
+                } else {
+                    let formattedItems = items.map(workout => { 
+                        return {  
+                            "payload": workout.payload,
+                            "id": workout._id,
+                        }
+                    });
+                    callback(formattedItems);
+                }
             }
-        }
-    );
+        );
+    }, 
+    () => {callback(null)});
+    
+}
+
+runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
+    getWorkoutsForOwnerForDateRange(req.params.id, req.params.gtedate, req.params.ltedate, (workouts) => {
+        if (workouts) {
+            res.json(workouts);
+        } else {
+            res.status(400).send("getting workouts failed");
+        }      
+    });
 })
 
 
@@ -284,7 +337,7 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
 //
 //
 
-function authorizeToGoogle(userID, workouts, res, callback) {
+function authorizeToGoogle(userID, workouts, successCallback, failureCallback, calendarFunc) {
     const oAuth2Client = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URIS);
     Users.findById(userID, (err, user) => {
         const tokens = {
@@ -296,19 +349,19 @@ function authorizeToGoogle(userID, workouts, res, callback) {
         const defaultRunDuration = user.config.defaultRunDuration;
         
         oAuth2Client.setCredentials(tokens);
-        callback(oAuth2Client, calendarID, timezone, defaultRunDuration, workouts, res);
+        calendarFunc(oAuth2Client, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback);
     });
-  }
-
-function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res) {
-    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res, false);
 }
 
-function updateGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res) {
-    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res, true);
+function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback) {
+    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback, false);
 }
 
-function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, res, isUpdate) {
+function updateGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback) {
+    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback, true);
+}
+
+function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback, isUpdate) {
     const calendar = google.calendar({version: 'v3', auth});
     let workoutsToReturn = [];
     let promises = [];
@@ -374,17 +427,8 @@ function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts
     });
 
     Promise.all(promises).then(
-        () => {
-            const verb = isUpdate ? "update" : "add";
-            res.status(200).json({
-                "message": workoutsToReturn.length + " workout(s) " + verb + " successfully", 
-                "workouts": workoutsToReturn,
-            })
-        },
-        () => {
-            const verb = isUpdate ? "update" : "add";
-            res.status(400).send(verb + " new workout(s) failed");
-        }
+        () => successCallback(workoutsToReturn),
+        () => failureCallback()
     );
 }  
 
@@ -492,9 +536,104 @@ runplannerRoutes.route("/deleteweeklygoal/:id").post(function(req, res) {
     });
 });
 
-runplannerRoutes.route("/autoFillWeek").post(function(req, res) {
-
+runplannerRoutes.route("/autofillweek").post(function(req, res) {
+    proceedIfUserExists(req.body.userID, 
+        (user) => {
+            WeeklyGoals.findById(req.body.goalID, function(err, goal) {
+                getWorkoutsForOwnerForDateRange(req.body.userID, goal.startDate, goal.endDate, (workouts) => {
+                    generateAutofillWorkouts(
+                        workouts, 
+                        goal.startDate, 
+                        goal.endDate, 
+                        goal.goalValue, 
+                        user.config, 
+                        req.body.userID, 
+                        (workoutsToReturn) => {
+                            console.log('made it to the callback');
+                            console.log(workoutsToReturn);
+                            if (workoutsToReturn) {
+                                res.status(200).json({
+                                    message: workoutsToReturn.length + 'automatic workouts added successfully', 
+                                    workouts: workoutsToReturn}
+                                );
+                            } else {
+                                res.status(400).send('Autofilling weekly goals failed');
+                            }
+                        });
+                });  
+            })
+        },
+        () => {res.status(400).send('Autofilling weekly goals failed')})
 });
+
+function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, userConfig, ownerID, callback) {
+    let numDaysToFill = 0;
+    let allocatedTotal = 0;
+    let newWorkouts = [];
+    let days = {}; // key = date, value = list of workouts on that day, if any
+
+    console.log("generating workouts");
+
+    // Sort workouts by day
+    let currentDay = moment(weekStart);
+    while (!currentDay.isAfter(moment(weekEnd))) { // Weeks are defined by their start and end inclusively
+        const date = currentDay.format(serverDateFormat);
+        const existingWorkoutsOnThisDate = existingWorkouts.filter(workout => moment(workout.payload.startDate).isSame(currentDay, 'day'));
+        days[date] = existingWorkoutsOnThisDate; // will return [] if no workouts on that day
+        currentDay.add(1, "day");
+    }
+
+    console.log(days);
+
+    // Calculate how many days/miles we have to work with
+    Object.values(days).forEach(workoutList => {
+        if (workoutList !== []) {
+            numDaysToFill += 1;
+            // TODO need to consider completed workouts
+            allocatedTotal += workoutList.reduce((milage, workout) => {return(milage + workout.payload.milage.goal)}, 0);
+        }
+    });
+
+    // Fill the open days according to the user's chosen distribution
+    if (userConfig.autofillConfig.distribution === "even") {
+        const dailyMilage = (goal - allocatedTotal) / numDaysToFill;
+        const templateWorkout = {
+            owner: ownerID,
+            payload: {
+                startDate: "",
+                content: "Auto-populated milage run",
+                type: "Recovery Run",
+                milage: {
+                  goal: dailyMilage,
+                },
+                creationType: "autofillWeek", // TODO gotta import that config
+            }
+        };
+
+        for (const date in days) {
+            if (days[date].length === 0) {
+                const workout = {...templateWorkout};
+                
+                let startDatetime = moment(date);
+                startDatetime.hour(userConfig.defaultStartTime.hour);
+                startDatetime.minute(userConfig.defaultStartTime.minute);
+                startDate = moment.tz(startDatetime, this.mainTimezone);
+                workout.payload.startDate = startDatetime.toISOString();
+
+                newWorkouts.push(workout);
+            }
+        }
+    } else if (config.autofillConfig.distribution === "random") {
+
+    }
+
+
+    // Actually store the workouts
+    addWorkouts(newWorkouts, ownerID, 
+        (addedWorkoutouts) => {callback(addedWorkoutouts)},
+        () => {callback(null)}
+    );
+}
 
 // Misc
 

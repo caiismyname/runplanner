@@ -6,10 +6,7 @@ let Workout = new Schema({
         type: String,
         required: [true, "Workouts must have owners"],
     },
-    gEventID: {
-        type: String,
-        // required: [true, "Each workout must be connected to a Google Calendar Event"],
-    },
+    gEventID: String,
     payload: {
         type: {
             type: String,
@@ -32,7 +29,7 @@ let Workout = new Schema({
         },
         creationType: {
             type: String,
-            enum: ["owner", "autoFillWeek", "repeatingWorkout"],
+            enum: ["owner", "autofillWeek", "repeatingWorkout"],
         }
     }
 });
