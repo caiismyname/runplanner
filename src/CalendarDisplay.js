@@ -25,6 +25,7 @@ class Calendar extends React.Component {
       deadline: PropTypes.string,
       defaultView: PropTypes.oneOf(Object.values(defaultView)),
       startingDayOfWeek: PropTypes.oneOf([0,1,2,3,4,5,6]).isRequired,
+      mainTimezone: PropTypes.string,
       weeklyGoals: PropTypes.objectOf(
         PropTypes.shape({
             weekStartDate: PropTypes.string, 
@@ -112,10 +113,22 @@ class Calendar extends React.Component {
       }
   
       const weekElements = weeks.map((days, index) => {
-        const startOfWeek = days[0].date;
-        const endOfWeek = days[days.length - 1].date;
-        const thisWeekGoal = startOfWeek in this.props.weeklyGoals 
-          ? this.props.weeklyGoals[startOfWeek]
+        // Pre-fill a goal with the week data so the only thing the WeeklyGoalControl 
+        // needs is the actual goal value.
+        
+        // Since the start/endOfWeek dates are used to query for workouts, they need to
+        // include hour/minute info to account for workout start times.
+        const startOfWeek = moment.tz(days[0].date, this.props.mainTimezone);
+        startOfWeek.hour(0);
+        startOfWeek.minute(0);
+        const formattedStartOfWeek = moment(startOfWeek).format(serverDateFormat);
+        
+        const endOfWeek = moment.tz(days[days.length - 1].date, this.props.mainTimezone);
+        endOfWeek.hour(23);
+        endOfWeek.minute(59);
+
+        const thisWeekGoal = formattedStartOfWeek in this.props.weeklyGoals 
+          ? this.props.weeklyGoals[formattedStartOfWeek]
           : {startDate: startOfWeek, endDate: endOfWeek, goalType: "weekly_milage_goal"};
 
         return (
@@ -235,10 +248,11 @@ class WeekDisplay extends React.Component {
 class WeekGoalControl extends React.Component {
     static propTypes = {
       goal: PropTypes.shape({
-        weekStartDate: PropTypes.string, 
-        weekEndDate: PropTypes.string,
+        startDate: PropTypes.string, 
+        endDate: PropTypes.string,
         goalValue: PropTypes.number,
         goalID: PropTypes.string,
+        goalType: PropTypes.string,
       }).isRequired,
       sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
       autofillWeeklyGoalHandler: PropTypes.func,

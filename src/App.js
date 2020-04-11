@@ -621,8 +621,6 @@ class MainPanel extends React.Component {
     for (let i in goalsToSend) {
       const goal = goalsToSend[i];
       // Attach timezone info since Mongo Date representation requires it
-      goal.startDate = moment.tz(goal.startDate, this.state.mainTimezone);
-      goal.endDate = moment.tz(goal.endDate, this.state.mainTimezone);
       if ("goalID" in goal) {
         goalsToUpdate.push(goal);
       } else {
@@ -646,7 +644,7 @@ class MainPanel extends React.Component {
       return (wrappedGoal);
     });
 
-    // Send workout to Mongo
+    // Send goal to Mongo
     axios.post(dbAddress + "addweeklygoals", {"toAdd": wrappedGoals})
     .then(res => {
         console.log(res.data);
@@ -680,10 +678,7 @@ class MainPanel extends React.Component {
 
           const newState = {...this.state.weeklyGoals};
           goalsToUpdate.forEach(goal => {
-            // Strip time info
-            goal.startDate = moment(goal.startDate).format(serverDateFormat);
-            goal.endDate = moment(goal.endDate).format(serverDateFormat);
-            newState[goal.startDate] = goal
+            newState[moment(goal.startDate).format(serverDateFormat)] = goal
           });
           this.setState({weeklyGoals: newState});
         });
@@ -765,6 +760,7 @@ class MainPanel extends React.Component {
             deadline={this.state.userConfig.countdownConfig.deadline}
             defaultView={this.state.userConfig.defaultView}
             startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
+            mainTimezone={this.state.userConfig.mainTimezone}
           />
         </div>
       </div>;
