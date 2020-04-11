@@ -605,9 +605,10 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
             }
         };
 
-        for (const date in days) {
+        for (let date in days) {
             if (days[date].length === 0) {
-                const workout = {...templateWorkout};
+                // const workout = {...templateWorkout}; // IDK
+                const workout = JSON.parse(JSON.stringify(templateWorkout));
                 
                 let startDatetime = moment(date);
                 startDatetime.hour(userConfig.defaultStartTime.hour);
@@ -623,8 +624,10 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
     }
 
 
+
+
     // Actually store the workouts
-    addWorkouts([newWorkouts[0]], ownerID, 
+    addWorkouts([newWorkouts[0], newWorkouts[1]], ownerID, 
         (addedWorkoutouts) => {callback(addedWorkoutouts)},
         () => {callback(null)}
     );
