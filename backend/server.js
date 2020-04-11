@@ -157,9 +157,6 @@ function addWorkouts(workoutsToAdd, userID, successCallback, failureCallback) {
     let promises = [];
     let fullWorkouts = [];
 
-    console.log("adding workouts");
-    console.log(workoutsToAdd);
-
     workoutsToAdd.forEach(w => {
         const promise = new Promise(function(resolve, reject) {
             proceedIfUserExists(w.owner, 
@@ -562,9 +559,9 @@ runplannerRoutes.route("/autofillweek").post(function(req, res) {
                         (workoutsToReturn) => {
                             if (workoutsToReturn) {
                                 res.status(200).json({
-                                    message: workoutsToReturn.length + ' automatic workouts added successfully', 
-                                    workouts: workoutsToReturn}
-                                );
+                                    ...workoutsToReturn,
+                                    message: workoutsToReturn.length + ' automatic workouts added/updated successfully', 
+                                });
                             } else {
                                 console.log('Autofilling weekly goals failed');
                                 res.status(400).send('Autofilling weekly goals failed');
@@ -652,14 +649,39 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
 
     }
 
-    // Actually store the workouts
-    addWorkouts(newWorkouts, ownerID, 
-        (addedWorkoutouts) => {callback(addedWorkoutouts)},
-        () => {callback(null)}
-    );
+    // Actually store the workouts.
+    // Can't do res.json twice, so have to collate into one call.
+    let returnedNewWorkouts;
+    let returnedUpdatedWorkouts;
 
-    updateWorkouts(updatedWorkouts, ownerID, 
-        (returnedUpdatedWorkouts) => {callback(returnedUpdatedWorkouts)},
+    const p1 = new Promise(function(resolve, reject) {
+        addWorkouts(newWorkouts, ownerID, 
+            (returned) => {
+                returnedNewWorkouts = returned;
+                resolve();
+            },
+            () => {
+                returnedNewWorkouts = null;
+                reject();
+            }
+        );
+    });
+    
+    const p2 = new Promise(function(resolve, reject) {
+        updateWorkouts(updatedWorkouts, ownerID, 
+            (returned) => {
+                returnedUpdatedWorkouts = returned;
+                resolve();
+            },
+            () => {
+                returnedUpdatedWorkouts = null;
+                reject();
+            }
+        );
+    });
+
+    Promise.all([p1, p2]).then(
+        () => {callback({added: returnedNewWorkouts, updated: returnedUpdatedWorkouts})},
         () => {callback(null)}
     );
 }

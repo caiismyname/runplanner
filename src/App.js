@@ -674,6 +674,7 @@ class MainPanel extends React.Component {
     if (wrappedGoals.length > 0) {
       axios.post(dbAddress + "updateweeklygoals", {"toUpdate": wrappedGoals})
         .then(res => {
+          // TODO update with returned data 
           console.log(res.data);
 
           const newState = {...this.state.weeklyGoals};
@@ -689,9 +690,14 @@ class MainPanel extends React.Component {
     axios.post(dbAddress + "autofillweek", {userID: this.state.userID, goalID: goalID})
       .then(res => {
         console.log(res.data);
-        res.data.workouts.forEach(workout => {
+        res.data.added.forEach(workout => {
           /// HOW DO WE GET THESE INTO THE WORKOUT HANDLER?
-        })
+          console.log(workout);
+        });
+
+        res.data.updated.forEach(workout => {
+          console.log(workout);
+        });
       })
   }
 
