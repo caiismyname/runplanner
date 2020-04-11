@@ -549,11 +549,9 @@ runplannerRoutes.route("/autofillweek").post(function(req, res) {
                         user.config, 
                         req.body.userID, 
                         (workoutsToReturn) => {
-                            console.log('made it to the callback');
-                            console.log(workoutsToReturn);
                             if (workoutsToReturn) {
                                 res.status(200).json({
-                                    message: workoutsToReturn.length + 'automatic workouts added successfully', 
+                                    message: workoutsToReturn.length + ' automatic workouts added successfully', 
                                     workouts: workoutsToReturn}
                                 );
                             } else {
@@ -572,8 +570,6 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
     let newWorkouts = [];
     let days = {}; // key = date, value = list of workouts on that day, if any
 
-    console.log("generating workouts");
-
     // Sort workouts by day
     let currentDay = moment(weekStart);
     while (!currentDay.isAfter(moment(weekEnd))) { // Weeks are defined by their start and end inclusively
@@ -583,12 +579,11 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
         currentDay.add(1, "day");
     }
 
-    console.log(days);
-
     // Calculate how many days/miles we have to work with
     Object.values(days).forEach(workoutList => {
-        if (workoutList !== []) {
+        if (workoutList.length === 0) {
             numDaysToFill += 1;
+        } else {
             // TODO need to consider completed workouts
             allocatedTotal += workoutList.reduce((milage, workout) => {return(milage + workout.payload.milage.goal)}, 0);
         }
@@ -629,7 +624,7 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
 
 
     // Actually store the workouts
-    addWorkouts(newWorkouts, ownerID, 
+    addWorkouts([newWorkouts[0]], ownerID, 
         (addedWorkoutouts) => {callback(addedWorkoutouts)},
         () => {callback(null)}
     );
