@@ -1,6 +1,7 @@
-const GOOGLE_CLIENT_SECRET = require('./client_secret').getGoogleClientSecret();
-const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
-const GOOGLE_REDIRECT_URIS = require('./client_secret').getRedirectURIs();
+const {GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET} = require('./client_secret');
+const {addWorkouts, deleteWorkouts, updateWorkouts, getWorkoutsForOwnerForDateRange} = require('./workout_handlers');
+const {generateAutofillWorkouts} = require('./weeklyGoal_handlers');
+const {PORT, mongoAddress, proceedIfUserExists} = require('./backend_configs');
 
 const express = require("express");
 const app = express();
@@ -9,10 +10,6 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const runplannerRoutes = express.Router();
-const {google} = require('googleapis');
-const moment = require('moment-timezone');
-const PORT = 4000;
-const serverDateFormat = "YYYY-MM-DD"; // Gotta figure out how to import from configs.js
 
 let Workouts = require("./runplanner-workout.model");
 let Users = require("./runplanner-user.model");
@@ -21,22 +18,8 @@ let WeeklyGoals = require("./runplanner-weeklyGoal.model");
 app.use(cors());
 app.use(bodyParser.json());
 
-function proceedIfUserExists(id, successCallback, failureCallback) {
-    // Users.findOne({ _id: id }).select("_id").lean().then(result => {
-    //     result ? successCallback(result) : failureCallback();
-    // }).catch(e => failureCallback());)
-
-    Users.findById(id, function(err, result) {
-        if (result) {
-            successCallback(result);
-        } else {
-            failureCallback(err);
-        }
-    })
-}
-
 mongoose.connect(
-    "mongodb://127.0.0.1:27017/runplanner", 
+    mongoAddress,
     {useNewUrlParser: true,}
 );
 
@@ -153,43 +136,6 @@ runplannerRoutes.route("/inituserserverauth").post(function(req, res) {
 //
 //
 
-function addWorkouts(workoutsToAdd, userID, successCallback, failureCallback) {
-    let promises = [];
-    let fullWorkouts = [];
-
-    workoutsToAdd.forEach(w => {
-        const promise = new Promise(function(resolve, reject) {
-            proceedIfUserExists(w.owner, 
-                () => {
-                    let workout = new Workouts(w);
-                    workout.save(function(err, savedWorkout) {
-                        if (err) {
-                            console.log(err);
-                            reject();
-                        } else {
-                            fullWorkouts.push(savedWorkout);
-                            console.log("Adding workout: " + savedWorkout._id);
-                            resolve();
-                        }
-                    });
-                },
-                () => {
-                    console.log("user does not exist");
-                    reject();
-                }
-            );
-        });
-        promises.push(promise);
-    });
-
-    Promise.all(promises).then(
-        () => {
-            // Add GCal event
-            authorizeToGoogle(userID, fullWorkouts, successCallback, failureCallback, addGCalEvents);
-        }, 
-        () => failureCallback()
-    );
-}
 
 runplannerRoutes.route("/addworkouts").post(function(req, res) {
     addWorkouts(req.body.toAdd, req.body.userID, 
@@ -197,53 +143,13 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
         (workoutsToReturn) => {
             res.status(200).json({
                 "message": workoutsToReturn.length + " workout(s) added successfully", 
-                "workouts": workoutsToReturn}
-            );
+                "workouts": workoutsToReturn,
+            });
         },
         // failure callback
         () => {res.status(400).send("Adding new workout(s) failed")}
     );
 });
-
-function deleteWorkouts(workoutsToDelete, userID, callback) {
-    let promises = [];
-    let deleted = [];
-
-    workoutsToDelete.forEach(id => {
-        const promise = new Promise(function(resolve, reject) {
-            Workouts.findById(id, function(err, workout) {
-                if (!workout) {
-                    res.status(404).send("Workout not found");
-                    reject();
-                } else {
-                    const startDate = workout.payload.startDate;
-                    const gEventID = workout.gEventID;
-                    Workouts.deleteOne({_id: id})
-                        .then(() => {
-                            console.log("Deleted " + id);
-                            deleted.push({id: id, startDate: startDate, gEventID: gEventID});
-                            resolve();
-                        })
-                        .catch(err => {reject()});
-                }
-            });
-        });
-        
-        promises.push(promise);
-    })
-
-    Promise.all(promises).then(
-        () => {
-            authorizeToGoogle(
-                userID, 
-                deleted.map(x => x.gEventID), 
-                () => callback(deleted), 
-                () => callback(deleted), 
-                deleteGCalEvents);
-        },
-        () => callback(null)
-    );
-}
 
 runplannerRoutes.route('/deleteworkouts').post(function(req, res) {
     deleteWorkouts(req.body.toDelete, req.body.userID,
@@ -258,46 +164,6 @@ runplannerRoutes.route('/deleteworkouts').post(function(req, res) {
         }
     });
 });
-
-function updateWorkouts(workoutsToUpdate, userID, callback) {
-    let updatedWorkouts = [];
-    let promises = [];
-
-    Object.keys(workoutsToUpdate).forEach((key,idx) => {
-        const promise = new Promise(function(resolve, reject) {
-            let workoutToUpdate = workoutsToUpdate[key];
-            Workouts.findById(workoutToUpdate.id, function(err, workout) {
-                if (!workout) {
-                    console.log('Could not find workout');
-                    res.status(404).send("Workout not found");
-                } else {
-                    workout.payload = workoutToUpdate.payload;
-                    workout.owner = workoutToUpdate.owner; // There shouldn't be a need to re-save owner 
-        
-                    workout.save()
-                        .then(workout => {
-                            updatedWorkouts.push(workout);
-                            resolve();
-                        })
-                        .catch(err => {
-                            console.log(err);
-                            reject();
-                        });
-                }
-            });
-        });
-
-        promises.push(promise);
-    });
-
-    Promise.all(promises).then(
-        () => {
-            // Update GCal events
-            authorizeToGoogle(userID, updatedWorkouts, callback, callback, updateGCalEvents);
-        },
-        () => callback(null)
-    )
-}
 
 runplannerRoutes.route("/updateworkouts").post(function(req, res) {
     const callback = (workoutsToReturn) => {
@@ -337,37 +203,6 @@ runplannerRoutes.route("/getworkoutforownerfordate/:id/:date").get(function(req,
     );
 });
 
-function getWorkoutsForOwnerForDateRange(ownerID, startDate, endDate, callback) {
-    proceedIfUserExists(ownerID, (owner) => {
-        Workouts.find(
-            { 
-                "payload.startDate": { 
-                    $gte: new Date(startDate), 
-                    $lte: new Date(endDate)
-                },
-                "owner": ownerID
-            },
-            (err, items) => {
-                if (err) {
-                    console.log(err);
-                    callback(null);
-                } else {
-                    let formattedItems = items.map(workout => { 
-                        return {  
-                            "payload": workout.payload,
-                            "owner": workout.owner,
-                            "id": workout._id,
-                        }
-                    });
-                    callback(formattedItems);
-                }
-            }
-        );
-    }, 
-    () => {callback(null)});
-    
-}
-
 runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
     getWorkoutsForOwnerForDateRange(req.params.id, req.params.gtedate, req.params.ltedate, (workouts) => {
         if (workouts) {
@@ -378,138 +213,6 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
     });
 })
 
-
-
-//
-//
-// Google Calendar Access
-//
-//
-
-// TODO refactor into one callback
-function authorizeToGoogle(userID, objects, successCallback, failureCallback, calendarFunc) {
-    const oAuth2Client = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URIS);
-    Users.findById(userID, (err, user) => {
-        const tokens = {
-            'access_token': user.gTokens.accessToken,
-            'refresh_token': user.gTokens.refreshToken,
-        };
-        const calendarID = user.calendarID;
-        const userConfig = user.config;
-        
-        oAuth2Client.setCredentials(tokens);
-        calendarFunc(oAuth2Client, calendarID, userConfig, objects, successCallback, failureCallback);
-    });
-}
-
-function addGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback) {
-    sendGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback, false);
-}
-
-function updateGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback) {
-    sendGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback, true);
-}
-
-function sendGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback, isUpdate) {
-    const calendar = google.calendar({version: 'v3', auth});
-    let workoutsToReturn = [];
-    let promises = [];
-
-    workouts.forEach(workout => {
-        const title = workout.payload.milage.goal === 0 
-            ? "New run" 
-            : workout.payload.milage.goal + " mile run";
-        const promise = new Promise(function(resolve, reject) {
-            const eventResource = {
-                'calendarId': calendarID,
-                'resource': {
-                    'summary': title,
-                    'start': {
-                        'dateTime': workout.payload.startDate,
-                        'timeZone': userConfig.mainTimezone
-                    },
-                    'end': {
-                        'dateTime': moment(workout.payload.startDate).add(userConfig.defaultRunDuration, "minutes").toISOString(),
-                        'timeZone': userConfig.mainTimezone
-                    }
-                }
-            };
-
-            // Create a single callback (for both updates and creations)
-            // to update Mongo once the gCal operation is complete.
-            const gCalCallback = (event) => {
-                // Save the workout with gEventID if adding a new workout
-                // Then (for both update and add) add the most up-to-date workout object 
-                // to the list, and resolve the promise.
-                Workouts.findById(workout._id, function(err, workout) {
-                    if (workout) {
-                        if (!isUpdate) {
-                            workout.gEventID = event.data.id;
-                            workout.save()
-                            .then(workout => {
-                                workoutsToReturn.push(workout);
-                                resolve();
-                            })
-                            .catch(err => {
-                                console.log(err);
-                                reject();
-                            });
-                        } else {
-                            workoutsToReturn.push(workout);
-                            resolve();
-                        }
-                    } else {
-                        console.log("Workout " + workout._id + " not found: " + err);
-                        reject();
-                    }
-                });
-            }
-
-            if (isUpdate) {
-                eventResource.eventId = workout.gEventID;
-                // In the future, may need to override the endtime if we allow custom times
-                calendar.events.update(eventResource).then(gCalCallback);   
-            } else {
-                calendar.events.insert(eventResource).then(gCalCallback);
-            }
-        });
-
-        promises.push(promise);
-    });
-
-    Promise.all(promises).then(
-        () => successCallback(workoutsToReturn),
-        () => failureCallback(null)
-    );
-}  
-
-function deleteGCalEvents(auth, calendarID, _, gEventIDs, callback, _) {
-    const calendar = google.calendar({version: 'v3', auth});
-    let promises = [];
-    let deletedIDs = [];
-    
-    gEventIDs.forEach(id => {
-        const promise = new Promise(function(resolve, reject) {
-            const eventResource = {
-                calendarId: calendarID,
-                eventId: id,
-            };
-            calendar.events.delete(eventResource).then(() => {
-                deletedIDs.push(id);
-                resolve();
-            });
-        });
-
-        promises.push(promise);
-    });
-
-    Promise.all(promises).then(
-        () => {
-            callback(deletedIDs);
-        },
-        () => {callback(null)}
-    );
-}
 
 //
 //
@@ -650,119 +353,6 @@ runplannerRoutes.route("/autofillweek").post(function(req, res) {
         },
         () => {res.status(400).send('Autofilling weekly goals failed')})
 });
-
-// Returns true/false for if all the workouts in the list are autogenerated
-function areWorkoutsSameCreationType(workoutList, creation) {
-    return workoutList.reduce((all, cur) => all && (cur.payload.creationType === creation), true);
-}
-
-// This function is idempotent on existing autogenerated workouts, 
-// assuming imputs (user workouts, goalValue) are the same.
-function generateAutofillWorkouts(existingWorkouts, goalPayload, userConfig, ownerID, callback) {
-    let numDaysToFill = 0;
-    let allocatedTotal = 0;
-    let newWorkouts = [];
-    let updatedWorkouts = [];
-    let days = {}; // key = date, value = list of workouts on that day, if any
-
-    // Sort workouts by day
-    let currentDay = moment(goalPayload.startDate);
-    while (!currentDay.isAfter(moment(goalPayload.endDate))) { // Weeks are defined by their start and end inclusively
-        const date = currentDay.format(serverDateFormat);
-        const existingWorkoutsOnThisDate = existingWorkouts.filter(workout => moment(workout.payload.startDate).isSame(currentDay, 'day'));
-        days[date] = existingWorkoutsOnThisDate; // will return [] if no workouts on that day
-        currentDay.add(1, "day");
-    }
-
-    // Calculate how many days/miles we have to work with
-    Object.values(days).forEach(workoutList => {
-        if (workoutList.length === 0 || areWorkoutsSameCreationType(workoutList, 'autofillWeek')) {
-            numDaysToFill += 1;
-        } else {
-            // TODO need to consider completed workouts
-            allocatedTotal += workoutList.reduce((milage, workout) => {return(milage + workout.payload.milage.goal)}, 0);
-        }
-    });
-
-    // Fill the open days according to the user's chosen distribution
-    if (userConfig.autofillConfig.distribution === "even") {
-        const dailyMilage = (goalPayload.goalValue - allocatedTotal) / numDaysToFill;
-        const templateWorkout = {
-            owner: ownerID,
-            payload: {
-                startDate: "",
-                content: "Auto-populated milage run",
-                type: "Recovery Run",
-                milage: {
-                  goal: dailyMilage,
-                },
-                creationType: "autofillWeek", // TODO gotta import that config
-            }
-        };
-
-        for (let date in days) {
-            // No existing autogenerated workouts, make new ones
-            if (days[date].length === 0) { 
-                // const workout = {...templateWorkout}; // IDK
-                const workout = JSON.parse(JSON.stringify(templateWorkout));
-                
-                let startDatetime = moment(date);
-                startDatetime.hour(userConfig.defaultStartTime.hour);
-                startDatetime.minute(userConfig.defaultStartTime.minute);
-                startDate = moment.tz(startDatetime, this.mainTimezone);
-                workout.payload.startDate = startDatetime.toISOString();
-
-                newWorkouts.push(workout);
-            
-            // Just update the existing autogenerated workouts
-            } else if (areWorkoutsSameCreationType(days[date], 'autofillWeek')) {
-                days[date].forEach(existingAutogeneratedWorkout => {
-                    const updatedWorkout = JSON.parse(JSON.stringify(existingAutogeneratedWorkout));
-                    updatedWorkout.payload.milage.goal = dailyMilage;
-                    updatedWorkouts.push(updatedWorkout);
-                });
-            }
-        }
-    } else if (config.autofillConfig.distribution === "random") {
-
-    }
-
-    // Actually store the workouts.
-    // Can't do res.json twice, so have to collate into one call.
-    let returnedNewWorkouts;
-    let returnedUpdatedWorkouts;
-
-    const p1 = new Promise(function(resolve, reject) {
-        addWorkouts(newWorkouts, ownerID, 
-            (returned) => {
-                returnedNewWorkouts = returned;
-                resolve();
-            },
-            () => {
-                returnedNewWorkouts = null;
-                reject();
-            }
-        );
-    });
-    
-    const p2 = new Promise(function(resolve, reject) {
-        updateWorkouts(updatedWorkouts, ownerID, 
-            (returned) => {
-                returnedUpdatedWorkouts = returned;
-                resolve();
-            },
-            () => {
-                returnedUpdatedWorkouts = null;
-                reject();
-            }
-        );
-    });
-
-    Promise.all([p1, p2]).then(
-        () => {callback({added: returnedNewWorkouts, updated: returnedUpdatedWorkouts})},
-        () => {callback(null)}
-    );
-}
 
 // Misc
 
