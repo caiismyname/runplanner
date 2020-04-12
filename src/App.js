@@ -187,6 +187,7 @@ class WorkoutHandler {
   updateWorkout(id, payload, callback) {
     // This funciton does not push updates to DB, it just marks workouts that need to be pushed upon save.
     this.workouts[id] = payload;
+    this.workouts[id].creationType = creationTypes.OWNER;
     // "Modified" workouts are workouts that have already been pushed to DB.
     if (!(this.modified.includes(id))) {
       this.modified.push(id);

@@ -225,7 +225,8 @@ class WeekDisplay extends React.Component {
       });
 
       dayCells.push(
-        <WeekGoalControl 
+        <WeekGoalControl
+          key={this.props.goal.payload.startDate} 
           goal={this.props.goal}
           sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
           autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
