@@ -1,7 +1,7 @@
 const GOOGLE_CLIENT_SECRET = require('./client_secret').getGoogleClientSecret();
 const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
 
-const {addWorkouts, deleteWorkouts, updateWorkouts, getWorkoutsForOwnerForDateRange} = require('./mongo_workout_handlers');
+const {addWorkouts, deleteWorkouts, updateWorkouts, getWorkoutsForOwnerForDateRange} = require('./workout_handlers');
 const {generateAutofillWorkouts} = require('./weeklyGoal_handlers');
 
 const express = require("express");

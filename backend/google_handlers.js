@@ -1,9 +1,3 @@
-//
-//
-// Google Calendar access functions
-//
-//
-
 const GOOGLE_CLIENT_SECRET = require('./client_secret').getGoogleClientSecret();
 const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
 const GOOGLE_REDIRECT_URIS = require('./client_secret').getRedirectURIs();
