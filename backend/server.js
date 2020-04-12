@@ -1,9 +1,7 @@
-const GOOGLE_CLIENT_SECRET = require('./client_secret').getGoogleClientSecret();
-const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
-
+const {GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET} = require('./client_secret');
 const {addWorkouts, deleteWorkouts, updateWorkouts, getWorkoutsForOwnerForDateRange} = require('./workout_handlers');
 const {generateAutofillWorkouts} = require('./weeklyGoal_handlers');
-const {PORT, mongoAddress} = require('./backend_configs');
+const {PORT, mongoAddress, proceedIfUserExists} = require('./backend_configs');
 
 const express = require("express");
 const app = express();
@@ -13,27 +11,12 @@ const mongoose = require("mongoose");
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const runplannerRoutes = express.Router();
 
-
 let Workouts = require("./runplanner-workout.model");
 let Users = require("./runplanner-user.model");
 let WeeklyGoals = require("./runplanner-weeklyGoal.model");
 
 app.use(cors());
 app.use(bodyParser.json());
-
-function proceedIfUserExists(id, successCallback, failureCallback) {
-    // Users.findOne({ _id: id }).select("_id").lean().then(result => {
-    //     result ? successCallback(result) : failureCallback();
-    // }).catch(e => failureCallback());)
-
-    Users.findById(id, function(err, result) {
-        if (result) {
-            successCallback(result);
-        } else {
-            failureCallback(err);
-        }
-    })
-}
 
 mongoose.connect(
     mongoAddress,

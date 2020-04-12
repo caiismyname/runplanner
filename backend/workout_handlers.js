@@ -1,21 +1,7 @@
 const {authorizeToGoogle, addGCalEvents, updateGCalEvents, deleteGCalEvents} = require('./google_handlers');
+const {proceedIfUserExists} = require('./backend_configs');
 
 let Workouts = require("./runplanner-workout.model");
-let Users = require("./runplanner-user.model");
-
-function proceedIfUserExists(id, successCallback, failureCallback) {
-    // Users.findOne({ _id: id }).select("_id").lean().then(result => {
-    //     result ? successCallback(result) : failureCallback();
-    // }).catch(e => failureCallback());)
-
-    Users.findById(id, function(err, result) {
-        if (result) {
-            successCallback(result);
-        } else {
-            failureCallback(err);
-        }
-    })
-}
 
 const addWorkouts = (workoutsToAdd, userID, successCallback, failureCallback) => {
     let promises = [];
