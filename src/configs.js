@@ -38,19 +38,6 @@ export const autofillDistributions = {
 };
 
 // Payload is consistently repeated across PropTypes
-export const payloadWithIDPropType = PropTypes.shape({
-  "id": PropTypes.string,
-  "payload": PropTypes.shape({
-    "content": PropTypes.string,
-    "date": PropTypes.string,
-    "type": PropTypes.string,
-    "milage": PropTypes.shape({
-      "goal": PropTypes.number,
-      "actual": PropTypes.number,
-    })
-  })
-});
-
 export const payloadPropType = PropTypes.shape({
   "content": PropTypes.string,
   "date": PropTypes.string,
@@ -59,6 +46,21 @@ export const payloadPropType = PropTypes.shape({
     "goal": PropTypes.number,
     "actual": PropTypes.number,
   })
+});
+
+export const payloadWithIDPropType = PropTypes.shape({
+  "id": PropTypes.string,
+  "payload": payloadPropType,
+});
+
+export const weeklyGoalPayloadPropType = PropTypes.shape({
+  payload: PropTypes.shape({
+    startDate: PropTypes.string, 
+    endDate: PropTypes.string,
+    goalType: PropTypes.oneOf(["weekly_milage_goal", "weekly_time_goal"]),
+    goalValue: PropTypes.number,
+  }),
+  goalID: PropTypes.string,
 });
 
 // Autofill types

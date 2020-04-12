@@ -449,7 +449,7 @@ function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts
 runplannerRoutes.route("/getweeklygoalsforownerfordaterange/:id/:gtedate/:ltedate").get(function(req, res) {
     WeeklyGoals.find(
         { 
-            "startDate": { 
+            "payload.startDate": { 
                 $gte: new Date(req.params.gtedate), 
                 $lte: new Date(req.params.ltedate)
             },
@@ -459,37 +459,27 @@ runplannerRoutes.route("/getweeklygoalsforownerfordaterange/:id/:gtedate/:ltedat
             if (err) {
                 console.log(err);
             } else {
-                let formattedItems = items.map(goal => { 
-                    return ({  
-                        startDate: goal.startDate,
-                        endDate: goal.endDate,
-                        goalValue: goal.goalValue,
-                        goalType: goal.goalType,
-                        goalID: goal._id,
-                    });
-                });
-                res.json(formattedItems);
+                res.json({goals: items});
             }
         }
     );
 })
 
 runplannerRoutes.route("/addweeklygoals").post(function(req, res) {
-    var newIDs = [];
     let promises = [];
+    let newGoals = [];
     // This assumes workout order will be preserved across all calls.
-    for (let i = 0; i < req.body.toAdd.length; i++) {
-        const g = req.body.toAdd[i];
+    req.body.toAdd.forEach(g => {
         const promise = new Promise(function(resolve, reject) {
             proceedIfUserExists(g.ownerID, 
-                (i) => {
+                () => {
                     let weeklyGoal = new WeeklyGoals(g);
                     weeklyGoal.save(function(err, goal) {
                         if (err) {
                             reject();
                         } else {
-                            newIDs.splice(i, 1, goal._id);
                             console.log("Adding weekly goal: " + goal._id);
+                            newGoals.push(goal);
                             resolve();
                         }
                     });
@@ -498,38 +488,53 @@ runplannerRoutes.route("/addweeklygoals").post(function(req, res) {
             );
         });
         promises.push(promise);
-    };
+    });
 
     Promise.all(promises).then(
         () => {
             res.status(200).json({
-                "message": newIDs.length + " weekly goals(s) added successfully", 
-                "ids": newIDs,
+                'message': newGoals.length + ' weekly goals(s) added successfully', 
+                'goals': newGoals,
             });
         }, 
-        () => res.status(400).send("Adding new weekly goal(s) failed")
+        () => res.status(400).send('Adding new weekly goal(s) failed')
     );
 });
 
 runplannerRoutes.route("/updateweeklygoals").post(function(req, res) {
+    let updatedGoals = [];
+    let promises = [];
+
     Object.keys(req.body.toUpdate).forEach((key,idx) => {
-        let goalToUpdate = req.body.toUpdate[key];
-        WeeklyGoals.findById(goalToUpdate.goalID, function(err, goal) {
-            if (!goal) {
-                res.status(404).send("Weekly goal not found");
-            } else {
-                goal.startDate = goalToUpdate.startDate;
-                goal.endDate = goalToUpdate.endDate;
-                goal.goalValue = goalToUpdate.goalValue;
-                goal.goalType = goalToUpdate.goalType;
-                goal.ownerID = goalToUpdate.ownerID;
-    
-                goal.save()
-                    .then(goal => {res.json(req.body.toUpdate.length + " weekly goal(s) updated")})
-                    .catch(err => {res.status(400).send("Weekly goal update failed")});
-            }
+        const promise = new Promise(function(resolve, reject) {
+            let goalToUpdate = req.body.toUpdate[key];
+
+            WeeklyGoals.findById(goalToUpdate.goalID, function(err, goal) {
+                if (!goal) {
+                    res.status(404).send("Weekly goal not found");
+                } else {
+                    goal.payload = goalToUpdate.payload;
+                    goal.save()
+                        .then(goal => {
+                            updatedGoals.push(goal);
+                            resolve();
+                        })
+                        .catch(err => reject());
+                }
+            });
         });
+        promises.push(promise);
     });
+
+    Promise.all(promises).then(
+        () => {
+            res.json({
+                    message: updatedGoals.length + " weekly goal(s) updated",
+                    goals: updatedGoals,
+            });
+        },
+        () => {res.status(400).send("Updating goal(s) failed")}
+    );
 });
 
 runplannerRoutes.route("/deleteweeklygoal/:id").post(function(req, res) {
@@ -548,26 +553,28 @@ runplannerRoutes.route("/autofillweek").post(function(req, res) {
     proceedIfUserExists(req.body.userID, 
         (user) => {
             WeeklyGoals.findById(req.body.goalID, function(err, goal) {
-                getWorkoutsForOwnerForDateRange(req.body.userID, goal.startDate, goal.endDate, (workouts) => {
-                    generateAutofillWorkouts(
-                        workouts, 
-                        goal.startDate, 
-                        goal.endDate, 
-                        goal.goalValue, 
-                        user.config, 
-                        req.body.userID, 
-                        (workoutsToReturn) => {
-                            if (workoutsToReturn) {
-                                res.status(200).json({
-                                    ...workoutsToReturn,
-                                    message: workoutsToReturn.length + ' automatic workouts added/updated successfully', 
-                                });
-                            } else {
-                                console.log('Autofilling weekly goals failed');
-                                res.status(400).send('Autofilling weekly goals failed');
-                            }
-                        });
-                });  
+                getWorkoutsForOwnerForDateRange(
+                    req.body.userID, 
+                    goal.payload.startDate, 
+                    goal.payload.endDate, 
+                    (workouts) => {
+                        generateAutofillWorkouts(
+                            workouts, 
+                            goal.payload,
+                            user.config, 
+                            req.body.userID, 
+                            (workoutsToReturn) => {
+                                if (workoutsToReturn) {
+                                    res.status(200).json({
+                                        ...workoutsToReturn,
+                                        message: workoutsToReturn.length + ' automatic workouts added/updated successfully', 
+                                    });
+                                } else {
+                                    console.log('Autofilling weekly goals failed');
+                                    res.status(400).send('Autofilling weekly goals failed');
+                                }
+                            });
+                        });  
             })
         },
         () => {res.status(400).send('Autofilling weekly goals failed')})
@@ -580,7 +587,7 @@ function areWorkoutsSameCreationType(workoutList, creation) {
 
 // This function is idempotent on existing autogenerated workouts, 
 // assuming imputs (user workouts, goalValue) are the same.
-function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, userConfig, ownerID, callback) {
+function generateAutofillWorkouts(existingWorkouts, goalPayload, userConfig, ownerID, callback) {
     let numDaysToFill = 0;
     let allocatedTotal = 0;
     let newWorkouts = [];
@@ -588,8 +595,8 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
     let days = {}; // key = date, value = list of workouts on that day, if any
 
     // Sort workouts by day
-    let currentDay = moment(weekStart);
-    while (!currentDay.isAfter(moment(weekEnd))) { // Weeks are defined by their start and end inclusively
+    let currentDay = moment(goalPayload.startDate);
+    while (!currentDay.isAfter(moment(goalPayload.endDate))) { // Weeks are defined by their start and end inclusively
         const date = currentDay.format(serverDateFormat);
         const existingWorkoutsOnThisDate = existingWorkouts.filter(workout => moment(workout.payload.startDate).isSame(currentDay, 'day'));
         days[date] = existingWorkoutsOnThisDate; // will return [] if no workouts on that day
@@ -608,7 +615,7 @@ function generateAutofillWorkouts(existingWorkouts, weekStart, weekEnd, goal, us
 
     // Fill the open days according to the user's chosen distribution
     if (userConfig.autofillConfig.distribution === "even") {
-        const dailyMilage = (goal - allocatedTotal) / numDaysToFill;
+        const dailyMilage = (goalPayload.goalValue - allocatedTotal) / numDaysToFill;
         const templateWorkout = {
             owner: ownerID,
             payload: {

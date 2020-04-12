@@ -274,7 +274,9 @@ class WorkoutHandler {
             
             const formattedDate = moment(workout.payload.startDate).format(serverDateFormat);
             if (formattedDate in this.dates) {
-              this.dates[formattedDate].push(workout.id);
+              if (!this.dates[formattedDate].includes(workout.id)){
+                this.dates[formattedDate].push(workout.id);
+              }
             } else {
               this.dates[formattedDate] = [workout.id];
             }
@@ -600,9 +602,9 @@ class MainPanel extends React.Component {
       if (response) {
         // Note: this could pose issues by copying over a bunch of now-invalid goals if the start-of-week changes
         const goals = {...this.state.weeklyGoals};
-        response.data.forEach(goal => {
-            const formattedStartDate = moment(goal.startDate).format(serverDateFormat);
-            goals[formattedStartDate] = goal; // Will overwrite an existing goal
+        response.data.goals.forEach(goal => {
+            const formattedStartDate = moment(goal.payload.startDate).format(serverDateFormat);
+            goals[formattedStartDate] = {payload: goal.payload, goalID: goal._id}; // Will overwrite an existing goal
         });
         
         this.setState({weeklyGoals: goals});
@@ -647,41 +649,40 @@ class MainPanel extends React.Component {
     // Send goal to Mongo
     axios.post(dbAddress + "addweeklygoals", {"toAdd": wrappedGoals})
     .then(res => {
-        console.log(res.data);
-        const newGoals = {...this.state.weeklyGoals};
-        for (let i = 0; i < res.data.ids.length; i++) {
-            const newGoal = {...goalsToAdd[i]};
-            // Strip time/timezone info
-            newGoal.startDate = moment(newGoal.startDate).format(serverDateFormat);
-            newGoal.endDate = moment(newGoal.endDate).format(serverDateFormat);
-            
-            newGoal.goalID = res.data.ids[i];
-            newGoals[newGoal.startDate] = newGoal;
-        }
+        const newGoalState = {...this.state.weeklyGoals};
+        res.data.goals.forEach(addedGoal => {
+          const formattedStartDate = moment(addedGoal.payload.startDate).format(serverDateFormat);
+          newGoalState[formattedStartDate] = {
+            payload: addedGoal.payload,
+            goalID: addedGoal._id,
+          };
+        });
         
-        this.setState({weeklyGoals: newGoals});
+        this.setState({weeklyGoals: newGoalState});
     });
   }
 
   updateWeeklyGoals(goalsToUpdate) {
     const wrappedGoals = goalsToUpdate.map(goal => {
-      const wrappedGoal = {...goal};
-      wrappedGoal.ownerID = this.state.userID;
-
-      return(wrappedGoal);
+      return({
+        payload: goal.payload,
+        goalID: goal.goalID,
+        ownerID: this.state.userID,
+      });
     });
     
     if (wrappedGoals.length > 0) {
       axios.post(dbAddress + "updateweeklygoals", {"toUpdate": wrappedGoals})
         .then(res => {
-          // TODO update with returned data 
-          console.log(res.data);
-
-          const newState = {...this.state.weeklyGoals};
-          goalsToUpdate.forEach(goal => {
-            newState[moment(goal.startDate).format(serverDateFormat)] = goal
+          const newGoals = {...this.state.weeklyGoals};
+          res.data.goals.forEach(goal => {
+            const formattedStartDate = moment(goal.payload.startDate).format(serverDateFormat);
+            newGoals[formattedStartDate] = {
+              payload: goal.payload,
+              goalID: goal._id,
+            };
           });
-          this.setState({weeklyGoals: newState});
+          this.setState({weeklyGoals: newGoals});
         });
     };
   }
@@ -689,15 +690,16 @@ class MainPanel extends React.Component {
   autofillWeeklyGoal(goalID) {
     axios.post(dbAddress + "autofillweek", {userID: this.state.userID, goalID: goalID})
       .then(res => {
-        console.log(res.data);
-        res.data.added.forEach(workout => {
-          /// HOW DO WE GET THESE INTO THE WORKOUT HANDLER?
-          console.log(workout);
-        });
+        // res.data.added.forEach(workout => {
+        //   /// HOW DO WE GET THESE INTO THE WORKOUT HANDLER?
+        //   console.log(workout);
+        // });
 
-        res.data.updated.forEach(workout => {
-          console.log(workout);
-        });
+        // res.data.updated.forEach(workout => {
+        //   console.log(workout);
+        // });
+
+        this.populateWorkouts();
       })
   }
 
