@@ -301,34 +301,35 @@ class DayCell extends React.Component {
     }
     
     render() {
-        const content = [];
-        if (this.props.payloads[0].id !== "") {
-            this.props.payloads.forEach((workout) => {
-                content.push(
-                    <div 
-                        key={workout.id}
-                        style={{border: "1px solid green"}} 
-                        onClick={() => this.props.addNewWorkoutHandler(workout.payload.startDate, workout.id)}
-                    >
-                        <h3>{workout.payload.type}</h3>
-                        <p>{workout.payload.content}</p>
-                        {workout.payload.milage.goal !== 0
-                          ? <p>{workout.payload.milage.goal + " miles"}</p>
-                          : null
-                        }
-                    </div>
-                );
-            });
-        } 
-
-        const plusButton = (
-            <button
-                style={{width: "34%", margin: "auto", display: "block", border: "2px solid red"}}
-                onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
+      const content = [];
+      if (this.props.payloads[0].id !== "") {
+      // if (this.props.payloads.length > 0) {
+        this.props.payloads.forEach((workout) => {
+          content.push(
+            <div 
+                key={workout.id}
+                style={{border: "1px solid green"}} 
+                onClick={() => this.props.addNewWorkoutHandler(workout.payload.startDate, workout.id)}
             >
-            <h1>+</h1>
-            </button>
-        );
+                <h3>{workout.payload.type}</h3>
+                <p>{workout.payload.content}</p>
+                {workout.payload.milage.goal !== 0
+                  ? <p>{workout.payload.milage.goal + " miles"}</p>
+                  : null
+                }
+            </div>
+          );
+        });
+      } 
+
+      const plusButton = (
+          <button
+              style={{width: "34%", margin: "auto", display: "block", border: "2px solid red"}}
+              onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
+          >
+          <h1>+</h1>
+          </button>
+      );
   
       return (
           <div>

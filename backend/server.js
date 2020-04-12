@@ -205,14 +205,56 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
     );
 });
 
-runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
-    Workouts.findById(req.params.id, function(err, workout) {
-        if (!workout) {
-            res.status(404).send("Workout not found");
-        } else {
-            Workouts.deleteOne({_id: req.params.id})
-                .then(res.status(200).json("Workout deleted successfully"))
-                .catch(err => {res.status(400).send("Deleting workout failed")});
+function deleteWorkouts(workoutsToDelete, userID, callback) {
+    let promises = [];
+    let deleted = [];
+
+    workoutsToDelete.forEach(id => {
+        const promise = new Promise(function(resolve, reject) {
+            Workouts.findById(id, function(err, workout) {
+                if (!workout) {
+                    res.status(404).send("Workout not found");
+                    reject();
+                } else {
+                    const startDate = workout.payload.startDate;
+                    const gEventID = workout.gEventID;
+                    Workouts.deleteOne({_id: id})
+                        .then(() => {
+                            console.log("Deleted " + id);
+                            deleted.push({id: id, startDate: startDate, gEventID: gEventID});
+                            resolve();
+                        })
+                        .catch(err => {reject()});
+                }
+            });
+        });
+        
+        promises.push(promise);
+    })
+
+    Promise.all(promises).then(
+        () => {
+            authorizeToGoogle(
+                userID, 
+                deleted.map(x => x.gEventID), 
+                () => callback(deleted), 
+                () => callback(deleted), 
+                deleteGCalEvents);
+        },
+        () => callback(null)
+    );
+}
+
+runplannerRoutes.route('/deleteworkouts').post(function(req, res) {
+    deleteWorkouts(req.body.toDelete, req.body.userID,
+      (deleted) => {
+        if (deleted) {
+            res.status(200).json({
+                message: deleted.length + ' workout(s) deleted successfully',
+                deleted: deleted,
+            });
+        }  else {
+            res.status(400).send('Deleting workout(s) failed');
         }
     });
 });
@@ -345,7 +387,7 @@ runplannerRoutes.route("/getworkoutsforownerfordaterange/:id/:gtedate/:ltedate")
 //
 
 // TODO refactor into one callback
-function authorizeToGoogle(userID, workouts, successCallback, failureCallback, calendarFunc) {
+function authorizeToGoogle(userID, objects, successCallback, failureCallback, calendarFunc) {
     const oAuth2Client = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URIS);
     Users.findById(userID, (err, user) => {
         const tokens = {
@@ -353,23 +395,22 @@ function authorizeToGoogle(userID, workouts, successCallback, failureCallback, c
             'refresh_token': user.gTokens.refreshToken,
         };
         const calendarID = user.calendarID;
-        const timezone = user.mainTimezone;
-        const defaultRunDuration = user.config.defaultRunDuration;
+        const userConfig = user.config;
         
         oAuth2Client.setCredentials(tokens);
-        calendarFunc(oAuth2Client, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback);
+        calendarFunc(oAuth2Client, calendarID, userConfig, objects, successCallback, failureCallback);
     });
 }
 
-function addGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback) {
-    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback, false);
+function addGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback) {
+    sendGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback, false);
 }
 
-function updateGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback) {
-    sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback, true);
+function updateGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback) {
+    sendGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback, true);
 }
 
-function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts, successCallback, failureCallback, isUpdate) {
+function sendGCalEvents(auth, calendarID, userConfig, workouts, successCallback, failureCallback, isUpdate) {
     const calendar = google.calendar({version: 'v3', auth});
     let workoutsToReturn = [];
     let promises = [];
@@ -385,15 +426,17 @@ function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts
                     'summary': title,
                     'start': {
                         'dateTime': workout.payload.startDate,
-                        'timeZone': timezone
+                        'timeZone': userConfig.mainTimezone
                     },
                     'end': {
-                        'dateTime': moment(workout.payload.startDate).add(defaultRunDuration, "minutes").toISOString(),
-                        'timeZone': timezone
+                        'dateTime': moment(workout.payload.startDate).add(userConfig.defaultRunDuration, "minutes").toISOString(),
+                        'timeZone': userConfig.mainTimezone
                     }
                 }
             };
 
+            // Create a single callback (for both updates and creations)
+            // to update Mongo once the gCal operation is complete.
             const gCalCallback = (event) => {
                 // Save the workout with gEventID if adding a new workout
                 // Then (for both update and add) add the most up-to-date workout object 
@@ -439,6 +482,34 @@ function sendGCalEvents(auth, calendarID, timezone, defaultRunDuration, workouts
         () => failureCallback(null)
     );
 }  
+
+function deleteGCalEvents(auth, calendarID, _, gEventIDs, callback, _) {
+    const calendar = google.calendar({version: 'v3', auth});
+    let promises = [];
+    let deletedIDs = [];
+    
+    gEventIDs.forEach(id => {
+        const promise = new Promise(function(resolve, reject) {
+            const eventResource = {
+                calendarId: calendarID,
+                eventId: id,
+            };
+            calendar.events.delete(eventResource).then(() => {
+                deletedIDs.push(id);
+                resolve();
+            });
+        });
+
+        promises.push(promise);
+    });
+
+    Promise.all(promises).then(
+        () => {
+            callback(deletedIDs);
+        },
+        () => {callback(null)}
+    );
+}
 
 //
 //

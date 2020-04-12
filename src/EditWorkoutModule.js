@@ -7,16 +7,18 @@ var moment = require('moment-timezone');
 
 class EditWorkoutModule extends React.Component {
   static propTypes = {
-    "id": PropTypes.string.isRequired,
+    "id": PropTypes.string,
     "onClose": PropTypes.func.isRequired,
     "payload": payloadPropType,
     "show": PropTypes.bool.isRequired,
-    "updateDayContentFunc": PropTypes.func,
+    "updateDayContentFunc": PropTypes.func.isRequired,
+    'deleteWorkoutFunc': PropTypes.func.isRequired
   };
   
   constructor(props) {
     super(props);
     this.handleWorkoutChange = this.handleWorkoutChange.bind(this);
+    this.handleDelete  = this.handleDelete.bind(this);
   }
 
   handleWorkoutChange(newValue, source) {
@@ -31,6 +33,11 @@ class EditWorkoutModule extends React.Component {
 
     this.props.updateDayContentFunc(this.props.id, newPayload);
   }
+
+  handleDelete() {
+    this.props.deleteWorkoutFunc(this.props.id);
+    this.props.onClose();
+  }
 
   render() {
     if(!this.props.show) {
@@ -68,7 +75,7 @@ class EditWorkoutModule extends React.Component {
         <input type="number" value={this.props.payload.milage.goal} onChange={(e) => this.handleWorkoutChange(Number(e.target.value), workoutFields.MILAGE_GOAL)}/>
         <div className="footer">
           <button onClick={this.props.onClose}>Close</button>
-          <button>Delete</button>
+          <button onClick={this.handleDelete}>Delete</button>
         </div>
       </div>
     );

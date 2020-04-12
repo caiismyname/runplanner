@@ -128,18 +128,20 @@ class WorkoutHandler {
 
         // Once workout is confirmed in Mongo, add the workout to local state.
         res.data.workouts.forEach(workout => {
-            const newWorkoutID = workout._id;
-            newWorkoutIDs.push(newWorkoutID);
-            this.workouts[newWorkoutID] = workout.payload;
-         
-            const date = moment(workout.payload.startDate).format(serverDateFormat);
-            if (date in this.dates) {
-                this.dates[date].push(newWorkoutID);
-            } else {
-            this.dates[date] = [newWorkoutID];
-            };
+					console.log(workout);
+					const newWorkoutID = workout._id;
+					newWorkoutIDs.push(newWorkoutID);
+					this.workouts[newWorkoutID] = workout.payload;
+				
+					const date = moment(workout.payload.startDate).format(serverDateFormat);
+					if (date in this.dates) {
+							this.dates[date].push(newWorkoutID);
+					} else {
+					this.dates[date] = [newWorkoutID];
+					};
         });
-       
+				
+				console.log(newWorkoutIDs)
         callback(this.generateDisplayWorkouts(), newWorkoutIDs);
     });
   }
@@ -231,6 +233,30 @@ class WorkoutHandler {
         });
       });
     });
+  }
+
+  deleteWorkouts(workoutIDs, callback) {
+    axios.post(dbAddress + "deleteworkouts", {userID: this.userID, toDelete: workoutIDs})
+    .then(res => {
+      if (res) {
+        res.data.deleted.forEach(deleted => {
+					delete this.workouts[deleted.id];
+					const formattedStartDate = moment(deleted.startDate).format(serverDateFormat);
+					const toDeleteIdx = this.dates[formattedStartDate].indexOf(deleted.id);
+					this.dates[formattedStartDate].splice(toDeleteIdx, 1);
+					
+					// Need to delete the list otherwise the Calendar won't know to generate 
+					// empty prop for the DayCell
+					if (this.dates[formattedStartDate].length === 0) {						
+						delete this.dates[formattedStartDate];
+					}
+				})
+				
+				callback(this.generateDisplayWorkouts());
+      } else {
+        console.log("Deleting failed");
+      }
+    })
   }
 
   syncToDB(callback) {
@@ -519,16 +545,17 @@ class MainPanel extends React.Component {
       // If no ID, we're creating a new workout.
       // Trigger the creation first on DB first, then populate the module with the resulting (empty) payload.
       if (id === "" ) {
-        // this.updateDayContent(id, this.state.workoutHandler.generateEmptyPayload(date));
         this.createNewWorkout(date);
         // Don't update EWMC state to show the module yet -- wait for object to be created in DB and FE to update.
         // The createNewWorkout function will set E to show.
       } else {
         newState.workoutID = id;
-        newState.showingEditWorkoutModule = true; // Override in case the module is already open and a new date is selected
-        this.setState({editWorkoutModuleConfig: newState});
-      };
-    };
+				newState.showingEditWorkoutModule = true; // Override in case the module is already open and a new date is selected
+				this.setState({editWorkoutModuleConfig: newState});
+      }
+		} else {
+			this.setState({editWorkoutModuleConfig: newState});
+		}
   }
   
   //
@@ -574,21 +601,29 @@ class MainPanel extends React.Component {
 
   updateDB() {
     this.state.workoutHandler.syncToDB(workouts => this.setState({workouts: workouts}));
-  }
+	}
 
   // Creates one new workout. There are some indexing assumptions built on the fact that only 
   // one workout is created.
   createNewWorkout(date) {
     this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIDs) => {
-      const newState = {workouts: displayWorkouts};
+			const newState = {workouts: displayWorkouts};
+			console.log(newWorkoutIDs);
       // Clicking the "add workout" button won't trigger the opening of the AWM.
-      // The AWM is opened here once the workout has been created in DB.
+      // The EWM is opened here once the workout has been created in DB.
       newState.editWorkoutModuleConfig = { ...this.state.editWorkoutModuleConfig};
       newState.editWorkoutModuleConfig.workoutID = newWorkoutIDs[0];
       newState.editWorkoutModuleConfig.showingEditWorkoutModule = true;
       this.setState(newState);
     });
-  }
+	}
+	
+	deleteWorkouts(workoutIDs) {
+		this.state.workoutHandler.deleteWorkouts(
+			workoutIDs, 
+			(newDisplayWorkouts) => {this.setState({workouts: newDisplayWorkouts})}
+		);
+	}
 
   // Database access methods -- Weekly Goals
 
@@ -742,8 +777,8 @@ class MainPanel extends React.Component {
     let editWorkoutModulePayload;
     if (this.state.editWorkoutModuleConfig.showingEditWorkoutModule 
       && this.state.editWorkoutModuleConfig.workoutID !== "") {
-        // Showing existing workout
-      editWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(editWorkoutModuleConfig.workoutID);
+				// Showing existing workout
+			editWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(editWorkoutModuleConfig.workoutID);
     };
     // Need failure case
 
@@ -752,7 +787,8 @@ class MainPanel extends React.Component {
           <EditWorkoutModule
             show={editWorkoutModuleConfig.showingEditWorkoutModule}
             onClose={() => this.toggleEditWorkoutModule("", "")}
-            updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
+						updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
+						deleteWorkoutFunc={(workoutID) => this.deleteWorkouts([workoutID])}
             payload={editWorkoutModulePayload}
             id={editWorkoutModuleConfig.workoutID}
           />
