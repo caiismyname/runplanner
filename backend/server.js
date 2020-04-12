@@ -205,14 +205,48 @@ runplannerRoutes.route("/addworkouts").post(function(req, res) {
     );
 });
 
-runplannerRoutes.route("/deleteworkout/:id").post(function(req, res) {
-    Workouts.findById(req.params.id, function(err, workout) {
-        if (!workout) {
-            res.status(404).send("Workout not found");
-        } else {
-            Workouts.deleteOne({_id: req.params.id})
-                .then(res.status(200).json("Workout deleted successfully"))
-                .catch(err => {res.status(400).send("Deleting workout failed")});
+function deleteWorkouts(workoutIDs, callback) {
+    let promises = [];
+    let deleted = [];
+
+    workoutIDs.forEach(id => {
+        const promise = new Promise(function(resolve, reject) {
+            Workouts.findById(id, function(err, workout) {
+                if (!workout) {
+                    res.status(404).send("Workout not found");
+                    reject();
+                } else {
+                    const startDate = workout.payload.startDate;
+                    Workouts.deleteOne({_id: id})
+                        .then(() => {
+                            console.log("Deleted " + id);
+                            deleted.push({id: id, startDate: startDate});
+                            resolve();
+                        })
+                        .catch(err => {reject()});
+                }
+            });
+        });
+        
+        promises.push(promise);
+    })
+
+    Promise.all(promises).then(
+        () => callback(deleted),
+        () => callback(null)
+    );
+}
+
+runplannerRoutes.route('/deleteworkouts').post(function(req, res) {
+    deleteWorkouts(req.body.toDelete,
+      (deleted) => {
+        if (deleted) {
+            res.status(200).json({
+                message: deleted.length + ' workout(s) deleted successfully',
+                deleted: deleted,
+            });
+        }  else {
+            res.status(400).send('Deleting workout(s) failed');
         }
     });
 });
