@@ -236,7 +236,7 @@ class WorkoutHandler {
   }
 
   deleteWorkouts(workoutIDs, callback) {
-    axios.post(dbAddress + "deleteworkouts", {toDelete: workoutIDs})
+    axios.post(dbAddress + "deleteworkouts", {userID: this.userID, toDelete: workoutIDs})
     .then(res => {
       if (res) {
         res.data.deleted.forEach(deleted => {
@@ -778,9 +778,7 @@ class MainPanel extends React.Component {
     if (this.state.editWorkoutModuleConfig.showingEditWorkoutModule 
       && this.state.editWorkoutModuleConfig.workoutID !== "") {
 				// Showing existing workout
-			console.log(editWorkoutModuleConfig.workoutID);
 			editWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(editWorkoutModuleConfig.workoutID);
-			console.log(editWorkoutModulePayload);
     };
     // Need failure case
 
