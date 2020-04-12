@@ -3,6 +3,7 @@ const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
 
 const {addWorkouts, deleteWorkouts, updateWorkouts, getWorkoutsForOwnerForDateRange} = require('./workout_handlers');
 const {generateAutofillWorkouts} = require('./weeklyGoal_handlers');
+const {PORT, mongoAddress} = require('./backend_configs');
 
 const express = require("express");
 const app = express();
@@ -11,10 +12,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const runplannerRoutes = express.Router();
-// const moment = require('moment-timezone');
 
-const PORT = 4000;
-// const serverDateFormat = "YYYY-MM-DD"; // Gotta figure out how to import from configs.js
 
 let Workouts = require("./runplanner-workout.model");
 let Users = require("./runplanner-user.model");
@@ -38,7 +36,7 @@ function proceedIfUserExists(id, successCallback, failureCallback) {
 }
 
 mongoose.connect(
-    "mongodb://127.0.0.1:27017/runplanner", 
+    mongoAddress,
     {useNewUrlParser: true,}
 );
 

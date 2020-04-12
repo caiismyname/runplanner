@@ -1,6 +1,6 @@
 const GOOGLE_CLIENT_SECRET = require('./client_secret').getGoogleClientSecret();
 const GOOGLE_CLIENT_ID = require('./client_secret').getGoogleClientID();
-const GOOGLE_REDIRECT_URIS = require('./client_secret').getRedirectURIs();
+const GOOGLE_REDIRECT_URIS = require('./client_secret').getGoogleRedirectURIs();
 
 let Users = require('./runplanner-user.model');
 let Workouts = require("./runplanner-workout.model");
