@@ -128,7 +128,6 @@ class WorkoutHandler {
 
         // Once workout is confirmed in Mongo, add the workout to local state.
         res.data.workouts.forEach(workout => {
-					console.log(workout);
 					const newWorkoutID = workout._id;
 					newWorkoutIDs.push(newWorkoutID);
 					this.workouts[newWorkoutID] = workout.payload;
@@ -141,7 +140,6 @@ class WorkoutHandler {
 					};
         });
 				
-				console.log(newWorkoutIDs)
         callback(this.generateDisplayWorkouts(), newWorkoutIDs);
     });
   }
@@ -608,7 +606,6 @@ class MainPanel extends React.Component {
   createNewWorkout(date) {
     this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIDs) => {
 			const newState = {workouts: displayWorkouts};
-			console.log(newWorkoutIDs);
       // Clicking the "add workout" button won't trigger the opening of the AWM.
       // The EWM is opened here once the workout has been created in DB.
       newState.editWorkoutModuleConfig = { ...this.state.editWorkoutModuleConfig};
