@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType, timeFields, weeklyGoalAddOrUpdateValidator} from './configs';
+import {defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType, weeklyGoalPayloadPropType} from './configs';
 import './App.css';
 
 var moment = require('moment-timezone');
@@ -25,16 +25,12 @@ class Calendar extends React.Component {
       deadline: PropTypes.string,
       defaultView: PropTypes.oneOf(Object.values(defaultView)),
       startingDayOfWeek: PropTypes.oneOf([0,1,2,3,4,5,6]).isRequired,
+      mainTimezone: PropTypes.string,
       weeklyGoals: PropTypes.objectOf(
-        PropTypes.shape({
-            weekStartDate: PropTypes.string, 
-            weekEndDate: PropTypes.string,
-            goalType: PropTypes.oneOf(["weekly_milage_goal", "weekly_time_goal"]),
-            goalValue: PropTypes.number,
-            goalID: PropTypes.string,
-        })
+        weeklyGoalPayloadPropType
       ).isRequired, 
       sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
+      autofillWeeklyGoalHandler: PropTypes.func,
     };
   
     fillDayArray() {
@@ -111,19 +107,38 @@ class Calendar extends React.Component {
       }
   
       const weekElements = weeks.map((days, index) => {
-        const startOfWeek = days[0].date;
-        const endOfWeek = days[days.length - 1].date;
-        const thisWeekGoal = startOfWeek in this.props.weeklyGoals 
-          ? this.props.weeklyGoals[startOfWeek]
-          : {startDate: startOfWeek, endDate: endOfWeek, goalType: "weekly_milage_goal"};
+        // Pre-fill a goal with the week data so the only thing the WeeklyGoalControl 
+        // needs is the actual goal value.
+        
+        // Since the start/endOfWeek dates are used to query for workouts, they need to
+        // include hour/minute info to account for workout start times.
+        const startOfWeek = moment.tz(days[0].date, this.props.mainTimezone);
+        startOfWeek.hour(0);
+        startOfWeek.minute(0);
+        const formattedStartOfWeek = moment(startOfWeek).format(serverDateFormat);
+        
+        const endOfWeek = moment.tz(days[days.length - 1].date, this.props.mainTimezone);
+        endOfWeek.hour(23);
+        endOfWeek.minute(59);
+
+        const thisWeekGoal = formattedStartOfWeek in this.props.weeklyGoals 
+          ? this.props.weeklyGoals[formattedStartOfWeek]
+          : {
+              payload: {
+                startDate: startOfWeek.toISOString(), 
+                endDate: endOfWeek.toISOString(), 
+                goalType: "weekly_milage_goal",
+              },
+            };
 
         return (
           <div key={index.toString()}>
             <WeekDisplay 
               days={days} 
               addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
-              weeklyGoal={thisWeekGoal}
+              goal={thisWeekGoal}
               sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
+              autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
             />
           </div>
         );
@@ -182,13 +197,9 @@ class WeekDisplay extends React.Component {
         })
       ).isRequired,
       addNewWorkoutHandler: PropTypes.func.isRequired,
-      weeklyGoal: PropTypes.shape({
-        weekStartDate: PropTypes.string, 
-        weekEndDate: PropTypes.string,
-        goalValue: PropTypes.number,
-        goalID: PropTypes.string
-      }).isRequired,
+      goal: weeklyGoalPayloadPropType.isRequired,
       sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
+      autofillWeeklyGoalHandler: PropTypes.func,
     }; 
 
     render() {
@@ -214,9 +225,11 @@ class WeekDisplay extends React.Component {
       });
 
       dayCells.push(
-        <WeekGoalControl 
-          goal={this.props.weeklyGoal}
-          sendWeeklyGoalsToDBHandler={newGoals =>this.props.sendWeeklyGoalsToDBHandler(newGoals)}
+        <WeekGoalControl
+          key={this.props.goal.payload.startDate} 
+          goal={this.props.goal}
+          sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
+          autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
         />
       );
   
@@ -230,18 +243,14 @@ class WeekDisplay extends React.Component {
 
 class WeekGoalControl extends React.Component {
     static propTypes = {
-      goal: PropTypes.shape({
-        weekStartDate: PropTypes.string, 
-        weekEndDate: PropTypes.string,
-        goalValue: PropTypes.number,
-        goalID: PropTypes.string,
-      }).isRequired,
+      goal: weeklyGoalPayloadPropType,
       sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
+      autofillWeeklyGoalHandler: PropTypes.func,
     }
 
     handleGoalChange(newValue) {
       const newGoal = {...this.props.goal}
-      newGoal.goalValue = newValue;
+      newGoal.payload.goalValue = newValue;
       this.props.sendWeeklyGoalsToDBHandler([newGoal]);
     }
 
@@ -251,10 +260,11 @@ class WeekGoalControl extends React.Component {
           <div>
              <input 
                 type="number" 
-                value={this.props.goal.goalValue} 
+                value={this.props.goal.payload.goalValue} 
                 onChange={(e) => this.handleGoalChange(Number(e.target.value))}
               />
               miles
+              <button onClick={() => this.props.autofillWeeklyGoalHandler(this.props.goal.goalID)}> Autofill</button>
           </div>
         );
       } else { // This week doesn't have a goal
@@ -264,7 +274,7 @@ class WeekGoalControl extends React.Component {
           <button 
             onClick={() => {
               const newGoal = {...this.props.goal}
-              newGoal.goalValue = 40;
+              newGoal.payload.goalValue = 40;
               this.props.sendWeeklyGoalsToDBHandler([newGoal]);
             }}
           >
@@ -298,7 +308,7 @@ class DayCell extends React.Component {
                     <div 
                         key={workout.id}
                         style={{border: "1px solid green"}} 
-                        onClick={() => this.props.addNewWorkoutHandler(workout.payload.date, workout.id)}
+                        onClick={() => this.props.addNewWorkoutHandler(workout.payload.startDate, workout.id)}
                     >
                         <h3>{workout.payload.type}</h3>
                         <p>{workout.payload.content}</p>

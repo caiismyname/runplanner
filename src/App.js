@@ -3,12 +3,11 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName} from './configs';
+import {defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
-import NewWorkoutModule from "./NewWorkoutModule";
+import EditWorkoutModule from "./EditWorkoutModule";
 import Calendar from "./CalendarDisplay";
-// import WeeklyGoalHandler from "./WeeklyGoalHandler";
 
 var moment = require('moment-timezone');
 
@@ -60,15 +59,15 @@ class MonthHandler {
 
 class WorkoutHandler {
   // Initialize to empty since MainPanel won't have pulled from DB yet when WorkoutHandler is constructed.
-  constructor(userID = "", calendarID = "", mainTimezone = "", defaultRunDuration = 60) {
+  constructor(userID = "", calendarID = "", mainTimezone = "", defaultStartTime = {hour: 7, minute: 0}, defaultRunDuration = 60) {
     this.userID = userID;
     this.calendarID = calendarID;
     this.workouts = {}; // Key = MongoId, Value = workout details
     this.dates = {}; // Key = date, Value = MongoId (to use as reference into above dict)
-    this.gEventIds = {}; // Key = MongoId, Value = Google Calendar event ID
     this.modified = [];
     this.mainTimezone = mainTimezone;
     this.defaultRunDuration = defaultRunDuration;
+    this.defaultStartTime = defaultStartTime; // 24 hour time
   }
 
   setUserID(id) {
@@ -87,22 +86,25 @@ class WorkoutHandler {
     this.calendarID = id;
   }
 
-  generateEmptyPayload(givenDate) {
-    const defaultStartTime = {hour: 7, minute: 0}; // 24 hour time
+  setDefaultStartTime(time) {
+    this.defaultStartTime = time;
+  }
 
+  generateEmptyPayload(givenDate) {
     let date = moment(givenDate);
-    date.hour(defaultStartTime.hour);
-    date.minute(defaultStartTime.minute);
+    date.hour(this.defaultStartTime.hour);
+    date.minute(this.defaultStartTime.minute);
     date = moment.tz(date, this.mainTimezone);
     
     return ({
-      date: date.toISOString(),
+      startDate: date.toISOString(),
       content: "",
       type: "",
       milage: {
         goal: 0,
         // actual: 0,
       },
+      creationType: creationTypes.OWNER,
     });
   }
 
@@ -112,40 +114,37 @@ class WorkoutHandler {
 
   addWorkouts(payloads, callback) {
     const wrappedPayloads = payloads.map(payload => {
-      const wrappedPayload = {};
-      wrappedPayload.payload = payload;
-      wrappedPayload.owner = this.userID;
+      const wrappedPayload = {
+        payload: payload,
+        owner: this.userID,
+      };
       return (wrappedPayload);
-      // addGCalEvent() will add `gEventId` to this object before passing to Mongo
     });
 
-    this.addGCalEvents(wrappedPayloads, (workouts) => {
-      // Send workout to Mongo
-      axios.post(dbAddress + "addworkouts", {"toAdd": wrappedPayloads})
-      .then(res => {
-        console.log(res.data);
-        const newWorkoutIds = [];
-        for (let i = 0; i < res.data.ids.length; i++) {
-          // Once workout is confirmed in Mongo, add the workout to local state.
-          // This assumes that workout IDs are returned in the order in which the workouts were sent
-          const newWorkoutId = res.data.ids[i];
-          newWorkoutIds.push(newWorkoutId);
-          this.workouts[newWorkoutId] = workouts[i].payload;
-          this.gEventIds[newWorkoutId] = workouts[i].gEventId;
-          
-          const date = moment(workouts[i].payload.date).format(serverDateFormat);
-          if (date in this.dates) {
-            this.dates[date].push(newWorkoutId);
-          } else {
-            this.dates[date] = [newWorkoutId];
-          };
-        }
-        
-        callback(this.generateDisplayWorkouts(), newWorkoutIds);
-      });
+    // Send workout to Mongo
+    axios.post(dbAddress + "addworkouts", {"toAdd": wrappedPayloads, "userID": this.userID})
+    .then(res => {
+        const newWorkoutIDs = [];
+
+        // Once workout is confirmed in Mongo, add the workout to local state.
+        res.data.workouts.forEach(workout => {
+            const newWorkoutID = workout._id;
+            newWorkoutIDs.push(newWorkoutID);
+            this.workouts[newWorkoutID] = workout.payload;
+         
+            const date = moment(workout.payload.startDate).format(serverDateFormat);
+            if (date in this.dates) {
+                this.dates[date].push(newWorkoutID);
+            } else {
+            this.dates[date] = [newWorkoutID];
+            };
+        });
+       
+        callback(this.generateDisplayWorkouts(), newWorkoutIDs);
     });
   }
 
+  // this function is deprecated in favor of server-side gcal event creation
   addGCalEvents(payloads, callback) {
     window.gapi.load('client:auth2', () => {   
       window.gapi.client.load("calendar", "v3", () => {
@@ -158,11 +157,11 @@ class WorkoutHandler {
               'resource': {
                 'summary': "New run",
                 'start': {
-                  'dateTime': payload.date,
+                  'dateTime': payload.startDate,
                   'timeZone': this.timeZone
                 },
                 'end': {
-                  'dateTime': moment(payload.date).add(this.defaultRunDuration, "minutes").toISOString(),
+                  'dateTime': moment(payload.startDate).add(this.defaultRunDuration, "minutes").toISOString(),
                   'timeZone': this.timeZone
                 }
               }
@@ -172,13 +171,13 @@ class WorkoutHandler {
       
         // Google batch API says it'll return objects in the order they're sent
         batch.then(response => {
-          const payloadsWithGEventId = [...payloads];
+          const payloadsWithGEventID = [...payloads];
           let payloadIdx = 0;
           for (var eventIdx in response.result) {
-            payloadsWithGEventId[payloadIdx].gEventId = response.result[eventIdx].result.id;
+            payloadsWithGEventID[payloadIdx].gEventID = response.result[eventIdx].result.id;
             payloadIdx += 1;
           }
-          callback(payloadsWithGEventId);
+          callback(payloadsWithGEventID);
         });
       });
     });
@@ -188,6 +187,7 @@ class WorkoutHandler {
   updateWorkout(id, payload, callback) {
     // This funciton does not push updates to DB, it just marks workouts that need to be pushed upon save.
     this.workouts[id] = payload;
+    this.workouts[id].creationType = creationTypes.OWNER;
     // "Modified" workouts are workouts that have already been pushed to DB.
     if (!(this.modified.includes(id))) {
       this.modified.push(id);
@@ -195,21 +195,22 @@ class WorkoutHandler {
     callback(this.generateDisplayWorkouts());
   }
 
-  updateGCalEvents(workoutIds) {
+  // this function is deprecated in favor of server-side gcal event updates
+  updateGCalEvents(workoutIDs) {
     window.gapi.load('client:auth2', () => {   
       window.gapi.client.load("calendar", "v3", () => {
         const batch = window.gapi.client.newBatch();
 
-        workoutIds.forEach(workoutId => {
-          const gEventId = this.gEventIds[workoutId];
-          // const newTitle = this.workouts[workoutId].content;
-          const newTitle = this.workouts[workoutId].milage.goal + " mile run";
-          const newStart = this.workouts[workoutId].date;
+        workoutIDs.forEach(workoutID => {
+          const gEventID = this.gEventIDs[workoutID];
+          // const newTitle = this.workouts[workoutID].content;
+          const newTitle = this.workouts[workoutID].milage.goal + " mile run";
+          const newStart = this.workouts[workoutID].startDate;
 
           batch.add(window.gapi.client.calendar.events.update(
             {
-              'calendarID': this.calendarID,
-              'eventId': gEventId,
+              'calendarId': this.calendarID,
+              'eventId': gEventID,
               'resource': {
                 'summary': newTitle,
                 'start': {
@@ -235,22 +236,24 @@ class WorkoutHandler {
   syncToDB(callback) {
     // TODO do these still need to be deduped?
     const modified = [...new Set(this.modified)]; // Dedup the list
-    const workoutsToUpdate = modified.map(workoutId => {
-      let res = {};
-      res.payload = this.workouts[workoutId];
-      res.owner = this.userID;
-      res.id = workoutId;
-      res.gEventId = this.gEventIds[workoutId];
-
-      return res;
+    const workoutsToUpdate = modified.map(workoutID => {
+      return({
+        payload: this.workouts[workoutID],
+        owner: this.userID,
+        id: workoutID,
+      });
     });
     
     if (workoutsToUpdate.length > 0) {
-      this.updateGCalEvents(modified);
-      axios.post(dbAddress + "updateworkouts", {"toUpdate": workoutsToUpdate})
+      axios.post(dbAddress + "updateworkouts", {"toUpdate": workoutsToUpdate, 'userID': this.userID})
         .then(res => {
           console.log(res.data);
           this.modified = [];
+          
+          // Replace modified local workouts with the server equivalent, for data synchronicity
+          res.data.workouts.forEach(workout => {
+              this.workouts[workout._id] = workout.payload;
+          })
           callback(this.generateDisplayWorkouts());
         });
     };
@@ -264,15 +267,17 @@ class WorkoutHandler {
       + startDate + "/"
       + endDate)
       .then(response => {
+        console.log(response);
         if (response) {
           response.data.forEach(workout => {
           // Current choice is to always overwrite local info with DB info if conflict exists. 
             this.workouts[workout.id] = workout.payload;
-            this.gEventIds[workout.id] = workout.gEventId;
             
-            const formattedDate = moment(workout.payload.date).format(serverDateFormat);
+            const formattedDate = moment(workout.payload.startDate).format(serverDateFormat);
             if (formattedDate in this.dates) {
-              this.dates[formattedDate].push(workout.id);
+              if (!this.dates[formattedDate].includes(workout.id)){
+                this.dates[formattedDate].push(workout.id);
+              }
             } else {
               this.dates[formattedDate] = [workout.id];
             }
@@ -286,8 +291,8 @@ class WorkoutHandler {
     let res = {};
     Object.keys(this.dates).forEach((date, idx) => {
       const workoutsOnDate = [];
-      this.dates[date].forEach((workoutId) => {
-        workoutsOnDate.push({payload: this.workouts[workoutId], id: workoutId});
+      this.dates[date].forEach((workoutID) => {
+        workoutsOnDate.push({payload: this.workouts[workoutID], id: workoutID});
       });
 
       res[date] = workoutsOnDate;
@@ -306,8 +311,9 @@ class MainPanel extends React.Component {
     super(props);
 
     // This has to come before this.state is set. I don't know why.
-    this.toggleAddWorkoutModule = this.toggleAddWorkoutModule.bind(this);
+    this.toggleEditWorkoutModule = this.toggleEditWorkoutModule.bind(this);
     this.signinHandler = this.signinHandler.bind(this);
+    this.authCodeHandler = this.authCodeHandler.bind(this);
     this.onboardingHandler = this.onboardingHandler.bind(this);
 
     this.state = {
@@ -315,9 +321,10 @@ class MainPanel extends React.Component {
       pendingUserLoading: true,
       userIsLoaded: false, // Has the user logged in via Google OAuth?
       userExists: false, // Is the Google userID in our DB?
-      addWorkoutModuleConfig: {
-        showingAddWorkoutModule: false,
-        workoutId: "",
+      newUserAuthCode: "", // Need to temporarily store new users' auth code for server-side access
+      editWorkoutModuleConfig: {
+        showingEditWorkoutModule: false,
+        workoutID: "",
         workoutDate: "",
       },
       currentMonth: new MonthHandler(),
@@ -330,20 +337,23 @@ class MainPanel extends React.Component {
       email: "",
 
       // from Mongo
-      calendarID: "",
-      defaultView: defaultView.CALENDAR,
-      mainTimezone: "America/Los_Angeles",
-      startingDayOfWeek: 0,
-      defaultRunDuration: 60,
-      countdownConfig: {
-        deadline: moment().format(serverDateFormat)
+      userConfig: {
+        calendarID: "",
+        defaultView: defaultView.CALENDAR,
+        mainTimezone: "America/Los_Angeles",
+        startingDayOfWeek: 0,
+        defaultRunDuration: 60,
+        defaultStartTime: {hour: 7, minute: 0},
+        countdownConfig: {
+          deadline: moment().format(serverDateFormat)
+        },
       },
       weeklyGoals: {},
     }
   }
 
   componentDidMount() {
-    const handler = this.signinHandler.bind(this);
+    const signInHandler = this.signinHandler.bind(this);
 
     window.gapi.load('auth2', function() {
       // Load+Init the auth2 instance here first. 
@@ -358,22 +368,17 @@ class MainPanel extends React.Component {
         // If so, handle the signed in user.
         // If not, go to login page to get a GoogleUser object.
         (googleAuth) => {
-          // unsure if this listener works / is necessary
-          // googleAuth.isSignedIn.listen(isSignedIn => {
-          //   handler(isSignedIn, googleAuth.currentUser.get());
-          // });
-
           if (googleAuth.isSignedIn.get()) {
-            handler(true, googleAuth.currentUser.get());
+            signInHandler(true);
           } else {
-            handler(false, null);
+            signInHandler(false);
           }
         },
         (err) => {console.log(err)} 
       );
     });
 
-    this.populateUser();
+    // this.populateUser();
   }
 
   //
@@ -387,54 +392,89 @@ class MainPanel extends React.Component {
           'summary': gCalDefaultName, // Summary is the calendar name
           'timeZone': timezone,
         }).then((response) => { // For some reason, this call only works if you attach a .then() to it
-          console.log(response);
           callback(response.result.id);
         });
       });
     });
   }
-  
-  signinHandler(isSuccess, googleUser) {
-    if (isSuccess) {
-      const profile = googleUser.getBasicProfile();
-      const userID = profile.getId();
-      const newState = {
-        userID: userID,
-        name: profile.getName(),
-        email: profile.getEmail(),
-        userIsLoaded: true,
-        pendingUserLoading: false,
-      };
 
-      axios.post(dbAddress + "checkuser", {"id": userID})
-      .then(res => {
-        newState["userExists"] = res.data.userExists;
-        this.setState(newState, () => this.populateUser());
-      });
-    } else {
-      this.setState({pendingUserLoading: false, userIsLoaded: false});
+  authCodeHandler(authCode) {
+      this.setState({newUserAuthCode: authCode});
+  }
+  
+  signinHandler(isSuccess) {
+    // Handles all sign-ins (both first-time and existing)
+    if (isSuccess) {
+        window.gapi.auth2.getAuthInstance().then(gAuth => {
+            const profile = gAuth.currentUser.get().getBasicProfile();
+            const userID = profile.getId();
+            const newState = {
+                userID: userID,
+                name: profile.getName(),
+                email: profile.getEmail(),
+                userIsLoaded: true,
+                pendingUserLoading: false,
+            };
+    
+            axios.post(dbAddress + "checkuser", {"id": userID})
+            .then(res => {
+                newState["userExists"] = res.data.userExists;
+                if (res.data.userExists) {
+                    this.setState(newState, () => this.populateUser());
+                } else {
+                    this.setState(newState);
+                }
+            });
+        })
+    } else { 
+        // If we've checked (pendingUserLoading) and didn't find a Google user (userIsLoaded),
+        // it means the user needs to go through Google onboarding.
+        this.setState({
+            pendingUserLoading: false, 
+            userIsLoaded: false, 
+        });
     };
   }
 
-  onboardingHandler(startingDayOfWeek, defaultView, mainTimezone, defaultRunDuration) {
-    const userId = this.state.userID;
+  onboardingHandler(startingDayOfWeek, defaultView, mainTimezone, defaultRunDuration, defaultStartTime, autofillDistribution) {
     this.initializeGCalCalendar(mainTimezone, (calendarID) => {
       axios.post(dbAddress + "adduser", 
         {
-          "_id": userId,
-          "calendarID": calendarID,
-          "config": {
-            "startingDayOfWeek": startingDayOfWeek,
-            "defaultView": defaultView,
-            "mainTimezone": mainTimezone,
-            "defaultRunDuration": defaultRunDuration,
+          _id: this.state.userID,
+          calendarID: calendarID,
+          config: {
+            startingDayOfWeek: startingDayOfWeek,
+            defaultView: defaultView,
+            mainTimezone: mainTimezone,
+            defaultRunDuration: defaultRunDuration,
+            countdownConfig: {
+              deadline: null,
+            },
+            defaultStartTime: defaultStartTime,
+            autofillDistribution: autofillDistribution,
           },
-          "countdownConfig": {
-            "deadline": null,
-          },
+
+          gTokens: {
+              accessToken: '',
+              refreshToken: '',
+          }
         })
-      .then(res => {
-        this.setState({userExists: true}, () => this.populateUser());
+      .then(_res => {
+        axios.post(dbAddress + 'inituserserverauth',
+            {   
+                authCode: this.state.newUserAuthCode,
+                userID: this.state.userID,
+            },
+            {headers: {'X-Requested-With': 'XMLHttpRequest'}},
+        ).then(_res => {
+            this.setState(
+                {
+                    userExists: true,
+                    newUserAuthCode: "",
+                }, 
+                () => this.populateUser()
+            );
+        });
       });
     });
   }
@@ -458,20 +498,20 @@ class MainPanel extends React.Component {
   getCurrentDisplayStartEnd() {
     let startDate;
     let endDate;
-    if (this.state.defaultView === defaultView.CALENDAR) {
+    if (this.state.userConfig.defaultView === defaultView.CALENDAR) {
       startDate = this.state.currentMonth.getMonthStart();
       endDate = this.state.currentMonth.getMonthEnd();
     } else { // Countdown mode
       startDate = moment().format(serverDateFormat);
-      endDate = this.state.countdownConfig.deadline;
+      endDate = this.state.userConfig.countdownConfig.deadline;
     }
 
     return ({startDate: startDate, endDate: endDate});
   }
 
-  toggleAddWorkoutModule(date="", id="") {
+  toggleEditWorkoutModule(date="", id="") {
     let newState = {
-      showingAddWorkoutModule: !this.state.addWorkoutModuleConfig.showingAddWorkoutModule
+      showingEditWorkoutModule: !this.state.editWorkoutModuleConfig.showingEditWorkoutModule
     };
     
     // If date is given, we're opening the module, and must populate the payload.
@@ -481,12 +521,12 @@ class MainPanel extends React.Component {
       if (id === "" ) {
         // this.updateDayContent(id, this.state.workoutHandler.generateEmptyPayload(date));
         this.createNewWorkout(date);
-        // Don't update AWMC state to show the module yet -- wait for object to be created in DB and FE to update.
-        // The createNewWorkout function will set AWMC to show.
+        // Don't update EWMC state to show the module yet -- wait for object to be created in DB and FE to update.
+        // The createNewWorkout function will set E to show.
       } else {
-        newState.workoutId = id;
-        newState.showingAddWorkoutModule = true; // Override in case the module is already open and a new date is selected
-        this.setState({addWorkoutModuleConfig: newState});
+        newState.workoutID = id;
+        newState.showingEditWorkoutModule = true; // Override in case the module is already open and a new date is selected
+        this.setState({editWorkoutModuleConfig: newState});
       };
     };
   }
@@ -494,29 +534,25 @@ class MainPanel extends React.Component {
   //
   // Database access methods
   //
-
-  populateUser() {
-    if (this.state.userIsLoaded && this.state.userExists) {
-      axios.get(dbAddress + "getuser/" + this.state.userID)
-        .then(response => {
-          this.setState({
-            // TODO would it be easier if we just kept a "config" object in state?
-            "defaultView": response.data.config.defaultView,
-            "mainTimezone": response.data.config.mainTimezone,
-            "startingDayOfWeek": response.data.config.startingDayOfWeek,
-            "defaultRunDuration": response.data.config.defaultRunDuration,
-            "calendarID": response.data.calendarID,
-            "countdownConfig": response.data.countdownConfig,
-          });
-          
-          this.state.workoutHandler.setUserID(this.state.userID);
-          this.state.workoutHandler.setCalendarID(this.state.calendarID);
-          this.state.workoutHandler.setMainTimezone(this.state.mainTimezone);
-          this.populateWorkouts();
-          this.populateWeeklyGoals();
-        });
-      };
-  }
+    
+    populateUser() {
+        // The if-check is just a safety measure -- this should never be called in those are both false
+        if (this.state.userIsLoaded && this.state.userExists) {
+            axios.get(dbAddress + "getuser/" + this.state.userID)
+                .then(response => {
+            this.setState({
+                userConfig: response.data.config,
+            });
+            
+            this.state.workoutHandler.setUserID(this.state.userID);
+            this.state.workoutHandler.setCalendarID(this.state.userConfig.calendarID);
+            this.state.workoutHandler.setMainTimezone(this.state.userConfig.mainTimezone);
+            this.state.workoutHandler.setDefaultStartTime(this.state.userConfig.defaultStartTime);
+            this.populateWorkouts();
+            this.populateWeeklyGoals();
+            });
+        };
+    }
 
   // Database access methods -- Workouts
   populateWorkouts() {
@@ -536,16 +572,20 @@ class MainPanel extends React.Component {
     });
   }
 
+  updateDB() {
+    this.state.workoutHandler.syncToDB(workouts => this.setState({workouts: workouts}));
+  }
+
   // Creates one new workout. There are some indexing assumptions built on the fact that only 
   // one workout is created.
   createNewWorkout(date) {
-    this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIds) => {
+    this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIDs) => {
       const newState = {workouts: displayWorkouts};
       // Clicking the "add workout" button won't trigger the opening of the AWM.
       // The AWM is opened here once the workout has been created in DB.
-      newState.addWorkoutModuleConfig = { ...this.state.addWorkoutModuleConfig};
-      newState.addWorkoutModuleConfig.workoutId = newWorkoutIds[0];
-      newState.addWorkoutModuleConfig.showingAddWorkoutModule = true;
+      newState.editWorkoutModuleConfig = { ...this.state.editWorkoutModuleConfig};
+      newState.editWorkoutModuleConfig.workoutID = newWorkoutIDs[0];
+      newState.editWorkoutModuleConfig.showingEditWorkoutModule = true;
       this.setState(newState);
     });
   }
@@ -563,12 +603,9 @@ class MainPanel extends React.Component {
       if (response) {
         // Note: this could pose issues by copying over a bunch of now-invalid goals if the start-of-week changes
         const goals = {...this.state.weeklyGoals};
-        response.data.forEach(goal => {
-            console.log(goal);
-          
-            const formattedStartDate = moment(goal.startDate).format(serverDateFormat);
-            console.log(formattedStartDate, goal.startDate);
-            goals[formattedStartDate] = goal; // Will overwrite an existing goal
+        response.data.goals.forEach(goal => {
+            const formattedStartDate = moment(goal.payload.startDate).format(serverDateFormat);
+            goals[formattedStartDate] = {payload: goal.payload, goalID: goal._id}; // Will overwrite an existing goal
         });
         
         this.setState({weeklyGoals: goals});
@@ -587,8 +624,6 @@ class MainPanel extends React.Component {
     for (let i in goalsToSend) {
       const goal = goalsToSend[i];
       // Attach timezone info since Mongo Date representation requires it
-      goal.startDate = moment.tz(goal.startDate, this.state.mainTimezone);
-      goal.endDate = moment.tz(goal.endDate, this.state.mainTimezone);
       if ("goalID" in goal) {
         goalsToUpdate.push(goal);
       } else {
@@ -612,48 +647,61 @@ class MainPanel extends React.Component {
       return (wrappedGoal);
     });
 
-    // Send workout to Mongo
+    // Send goal to Mongo
     axios.post(dbAddress + "addweeklygoals", {"toAdd": wrappedGoals})
     .then(res => {
-        console.log(res.data);
-        const newGoals = {...this.state.weeklyGoals};
-        for (let i = 0; i < res.data.ids.length; i++) {
-            const newGoal = {...goalsToAdd[i]};
-            // Strip time/timezone info
-            newGoal.startDate = moment(newGoal.startDate).format(serverDateFormat);
-            newGoal.endDate = moment(newGoal.endDate).format(serverDateFormat);
-            
-            newGoal.goalID = res.data.ids[i];
-            newGoals[newGoal.startDate] = newGoal;
-        }
+        const newGoalState = {...this.state.weeklyGoals};
+        res.data.goals.forEach(addedGoal => {
+          const formattedStartDate = moment(addedGoal.payload.startDate).format(serverDateFormat);
+          newGoalState[formattedStartDate] = {
+            payload: addedGoal.payload,
+            goalID: addedGoal._id,
+          };
+        });
         
-        this.setState({weeklyGoals: newGoals});
+        this.setState({weeklyGoals: newGoalState});
     });
   }
 
   updateWeeklyGoals(goalsToUpdate) {
     const wrappedGoals = goalsToUpdate.map(goal => {
-      const wrappedGoal = {...goal};
-      wrappedGoal.ownerID = this.state.userID;
-
-      return(wrappedGoal);
+      return({
+        payload: goal.payload,
+        goalID: goal.goalID,
+        ownerID: this.state.userID,
+      });
     });
     
     if (wrappedGoals.length > 0) {
       axios.post(dbAddress + "updateweeklygoals", {"toUpdate": wrappedGoals})
         .then(res => {
-          console.log(res.data);
-
-          const newState = {...this.state.weeklyGoals};
-          goalsToUpdate.forEach(goal => {
-            // Strip time info
-            goal.startDate = moment(goal.startDate).format(serverDateFormat);
-            goal.endDate = moment(goal.endDate).format(serverDateFormat);
-            newState[goal.startDate] = goal
+          const newGoals = {...this.state.weeklyGoals};
+          res.data.goals.forEach(goal => {
+            const formattedStartDate = moment(goal.payload.startDate).format(serverDateFormat);
+            newGoals[formattedStartDate] = {
+              payload: goal.payload,
+              goalID: goal._id,
+            };
           });
-          this.setState({weeklyGoals: newState});
+          this.setState({weeklyGoals: newGoals});
         });
     };
+  }
+
+  autofillWeeklyGoal(goalID) {
+    axios.post(dbAddress + "autofillweek", {userID: this.state.userID, goalID: goalID})
+      .then(res => {
+        // res.data.added.forEach(workout => {
+        //   /// HOW DO WE GET THESE INTO THE WORKOUT HANDLER?
+        //   console.log(workout);
+        // });
+
+        // res.data.updated.forEach(workout => {
+        //   console.log(workout);
+        // });
+
+        this.populateWorkouts();
+      })
   }
 
   deleteWeeklyGoal(goalID) {
@@ -670,11 +718,18 @@ class MainPanel extends React.Component {
     }
 
     if (!this.state.userIsLoaded) {
-      return(<LoginPage signinHandler={this.signinHandler}/>);
+      return(
+        <LoginPage 
+            signinHandler={this.signinHandler}
+            authCodeHandler={this.authCodeHandler}
+        />
+        );
     };
     
     if (!this.state.userExists) {
-      return(<NewUserOnboarding onboardingHandler={this.onboardingHandler}/>);
+        // User has now logged in via Google (userIsLoaded). 
+        // If they're not in our DB (userExists), then we need to perform our own onboarding.
+        return(<NewUserOnboarding onboardingHandler={this.onboardingHandler}/>);
     };
 
     const currentMonth = this.state.currentMonth;
@@ -682,37 +737,39 @@ class MainPanel extends React.Component {
       this.state.defaultView === defaultView.CALENDAR 
       ? defaultView.COUNTDOWN
       : defaultView.CALENDAR;
-    const addWorkoutModuleConfig = this.state.addWorkoutModuleConfig;
+    const editWorkoutModuleConfig = this.state.editWorkoutModuleConfig;
 
-    let newWorkoutModulePayload;
-    if (this.state.addWorkoutModuleConfig.showingAddWorkoutModule 
-      && this.state.addWorkoutModuleConfig.workoutId !== "") {
+    let editWorkoutModulePayload;
+    if (this.state.editWorkoutModuleConfig.showingEditWorkoutModule 
+      && this.state.editWorkoutModuleConfig.workoutID !== "") {
         // Showing existing workout
-      newWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(addWorkoutModuleConfig.workoutId);
+      editWorkoutModulePayload = this.state.workoutHandler.getWorkoutById(editWorkoutModuleConfig.workoutID);
     };
     // Need failure case
 
     const content =         
       <div style={{display: "flex"}}>
-          <NewWorkoutModule
-            show={addWorkoutModuleConfig.showingAddWorkoutModule}
-            onClose={() => this.toggleAddWorkoutModule("", "")}
-            updateDayContentFunc={(workoutId, content) => this.updateDayContent(workoutId, content)}
-            payload={newWorkoutModulePayload}
-            id={addWorkoutModuleConfig.workoutId}
+          <EditWorkoutModule
+            show={editWorkoutModuleConfig.showingEditWorkoutModule}
+            onClose={() => this.toggleEditWorkoutModule("", "")}
+            updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
+            payload={editWorkoutModulePayload}
+            id={editWorkoutModuleConfig.workoutID}
           />
         <div style={{flex: "1"}}>
           <Calendar 
             currentMonth={currentMonth.getMonthInfo()}
             decrementMonthHandler={() => this.decrementMonth()}
             incrementMonthHandler={() => this.incrementMonth()} 
-            addNewWorkoutHandler={(date, id) => this.toggleAddWorkoutModule(date, id)}
+            addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
             workouts={this.state.workouts}
             sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
+            autofillWeeklyGoalHandler={(goalID) => this.autofillWeeklyGoal(goalID)}
             weeklyGoals={this.state.weeklyGoals}
-            deadline={this.state.countdownConfig.deadline}
-            defaultView={this.state.defaultView}
-            startingDayOfWeek={this.state.startingDayOfWeek}
+            deadline={this.state.userConfig.countdownConfig.deadline}
+            defaultView={this.state.userConfig.defaultView}
+            startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
+            mainTimezone={this.state.userConfig.mainTimezone}
           />
         </div>
       </div>;

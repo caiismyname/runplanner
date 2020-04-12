@@ -5,7 +5,7 @@ import {workoutFields, timeFields, dateDisplayFormat, payloadPropType} from './c
 
 var moment = require('moment-timezone');
 
-class NewWorkoutModule extends React.Component {
+class EditWorkoutModule extends React.Component {
   static propTypes = {
     "id": PropTypes.string.isRequired,
     "onClose": PropTypes.func.isRequired,
@@ -43,12 +43,12 @@ class NewWorkoutModule extends React.Component {
 
     return (
       <div style={{modalStyle}}>
-        <h1>{moment(this.props.payload.date).format(dateDisplayFormat)}</h1>
+        <h1>{moment(this.props.payload.startDate).format(dateDisplayFormat)}</h1>
         <h2>Time</h2>
         <TimeEntry 
-          date={this.props.payload.date}
+          date={this.props.payload.startDate}
           updateTimeCallback={(newDateTime) => {
-            this.handleWorkoutChange(newDateTime, workoutFields.DATE);
+            this.handleWorkoutChange(newDateTime, workoutFields.STARTDATE);
           }}
         />
 
@@ -168,4 +168,4 @@ class TimeEntry extends React.Component {
   }
 }
 
-export default NewWorkoutModule;
+export default EditWorkoutModule;

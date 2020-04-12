@@ -14,30 +14,30 @@ export const gCalDefaultName = "RunPlanner";
 export const workoutFields = {
   TYPE: "type",
   CONTENT: "content",
-  DATE: "date",
+  STARTDATE: "startDate",
   MILAGE_GOAL: "milage.goal",
   MILAGE_ACTUAL: "milage.actual",
 };
 export const timeFields = {
   HOUR: "hour",
-  "MINUTE": "minute",
+  MINUTE: "minute",
 };
 export const dateDisplayFormat = "M/DD/YY";
+export const creationTypes = {
+  OWNER: "owner",
+  AUTOFILLWEEK: "autofillWeek", 
+  REPEATINGWORKOUT: "repeatingWorkout",
+};
+
+export const autofillDistributions = {
+  EVEN: "even", 
+  RANDOM: "random",
+  PYRAMID: "pyramid", 
+  STAIRCASEUP: "staircaseUp", 
+  STAIRCASEDOWN: "staircaseDown",
+};
 
 // Payload is consistently repeated across PropTypes
-export const payloadWithIDPropType = PropTypes.shape({
-  "id": PropTypes.string,
-  "payload": PropTypes.shape({
-    "content": PropTypes.string,
-    "date": PropTypes.string,
-    "type": PropTypes.string,
-    "milage": PropTypes.shape({
-      "goal": PropTypes.number,
-      "actual": PropTypes.number,
-    })
-  })
-});
-
 export const payloadPropType = PropTypes.shape({
   "content": PropTypes.string,
   "date": PropTypes.string,
@@ -48,11 +48,20 @@ export const payloadPropType = PropTypes.shape({
   })
 });
 
-export const weeklyGoalAddOrUpdateValidator = (props, propName, componentName) => {
-  if (!props.addWeeklyGoalHandler && !props.updateWeeklyGoalHandler) {
-    return new Error(`One of props 'addWeeklGoalHandler' or 'updateWeeklGoalHandler' was not specified in '${componentName}'.`);
-  }
-};
+export const payloadWithIDPropType = PropTypes.shape({
+  "id": PropTypes.string,
+  "payload": payloadPropType,
+});
+
+export const weeklyGoalPayloadPropType = PropTypes.shape({
+  payload: PropTypes.shape({
+    startDate: PropTypes.string, 
+    endDate: PropTypes.string,
+    goalType: PropTypes.oneOf(["weekly_milage_goal", "weekly_time_goal"]),
+    goalValue: PropTypes.number,
+  }),
+  goalID: PropTypes.string,
+});
 
 // Autofill types
 export const autofillTypes = {
