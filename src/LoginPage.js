@@ -8,7 +8,7 @@ class LoginPage extends React.Component {
     };
 
     componentDidMount() {
-        window.gapi.load('client:auth2', () => {   
+        window.gapi.load('client:auth2', () => {
             // We only go to this page if we're already determined to be not logged in 
             // via App.js
 
@@ -18,7 +18,7 @@ class LoginPage extends React.Component {
                 this.props.signinHandler(signinStatus);
             });
 
-        }, function(error) {
+        }, function (error) {
             console.log(error);
         });
     }
@@ -31,12 +31,12 @@ class LoginPage extends React.Component {
                 this.props.authCodeHandler(authResult['code']);
             } else {
                 console.log("Error while getting offline access");
-            }   
-        })
+            }
+        });
     }
 
     render() {
-        return(
+        return (
             <div>
                 <p>You are not signed in.</p>
                 <button id="authorize_button" onClick={() => this.handleAuthClick(null)}>Authorize</button>
