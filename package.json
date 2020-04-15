@@ -5,12 +5,15 @@
   "dependencies": {
     "axios": "0.19.0",
     "googleapis": "^39.2.0",
+    "grommet": "^2.12.0",
     "moment-timezone": "0.5.27",
+    "polished": "^3.5.1",
     "prop-types": "15.7.2",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "react-router-dom": "^5.1.2",
     "react-scripts": "^3.4.1",
+    "styled-components": "^5.1.0",
     "xmlhttprequest": "^1.8.0"
   },
   "scripts": {

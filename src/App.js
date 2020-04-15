@@ -1,4 +1,5 @@
 import React from 'react';
+import { Grommet } from 'grommet';
 import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
@@ -741,6 +742,16 @@ class MainPanel extends React.Component {
 
 
 	render() {
+		const theme = {
+			global: {
+			  font: {
+				family: 'Roboto',
+				size: '14px',
+				height: '20px',
+			  },
+			},
+		  };
+
 		if (this.state.pendingUserLoading) {
 			return (null);
 		}
@@ -804,18 +815,20 @@ class MainPanel extends React.Component {
 			</div>;
 
 		return (
-			<div>
-				<h1>{"Hi " + this.state.name + "!"}</h1>
+			<Grommet theme={theme}>
+				<div>
+					<h1>{"Hi " + this.state.name + "!"}</h1>
 
-				<button onClick={() => this.switchDisplayModes()}>
-					{"Switch to " + alternateDisplayMode + " mode"}
-				</button>
-				<button onClick={() => this.updateDB()}>
-					Save Edits
-				</button>
+					<button onClick={() => this.switchDisplayModes()}>
+						{"Switch to " + alternateDisplayMode + " mode"}
+					</button>
+					<button onClick={() => this.updateDB()}>
+						Save Edits
+					</button>
 
-				{content}
-			</div>
+					{content}
+				</div>
+			</Grommet>
 		);
 	}
 }

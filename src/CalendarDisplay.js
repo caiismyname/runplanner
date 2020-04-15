@@ -1,4 +1,5 @@
 import React from 'react';
+import { Box, Grommet, Button} from 'grommet';
 import PropTypes from 'prop-types';
 import { defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType, weeklyGoalPayloadPropType } from './configs';
 import './App.css';
@@ -91,8 +92,11 @@ class Calendar extends React.Component {
 		daysOfWeek = daysOfWeek.slice(this.props.startingDayOfWeek, this.props.startingDayOfWeek + 7);
 
 		const dayLabels = daysOfWeek.map((value, index) => {
-			return (<div key={value}><h1>{value}</h1></div>);
+			return (<div key={value} style={{width: '100%'}}><h1>{value}</h1></div>);
 		});
+
+		// For the goal module
+		dayLabels.push(<div style={{width: '100%'}}></div>);
 
 		return dayLabels;
 	}
@@ -154,9 +158,11 @@ class Calendar extends React.Component {
 					/>
 					: null
 				}
-				<div className="dayLabels">
+				<Box 
+					direction='row'
+				>
 					{this.generateHeaderDayLabels()}
-				</div>
+				</Box>
 				{weekElements}
 			</div>
 		);
@@ -179,8 +185,8 @@ class CalendarMonthControl extends React.Component {
 			<div>
 				<h1>{moment(this.props.currentMonth.month).format("MMMM YYYY")}</h1>
 				<div>
-					<button onClick={() => this.props.decrementMonthHandler()}>{"<"}</button>
-					<button onClick={() => this.props.incrementMonthHandler()}>{">"}</button>
+					<Button onClick={() => this.props.decrementMonthHandler()} label='<'/>
+					<Button onClick={() => this.props.incrementMonthHandler()} label='>'/>
 				</div>
 			</div>
 		);
@@ -233,9 +239,9 @@ class WeekDisplay extends React.Component {
 		);
 
 		return (
-			<div className="weekDisplay">
+			<Box direction='row'>
 				{dayCells}
-			</div>
+			</Box>
 		);
 	}
 }
