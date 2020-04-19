@@ -1,7 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-
-import { workoutFields, timeFields, editModuleDateDisplayFormat, payloadPropType } from './configs';
+import { Box, Button, Heading, TextInput, TextArea, FormField, RadioButtonGroup} from 'grommet';
+import { Save } from 'grommet-icons';
+import { workoutFields, timeFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes, toSentenceCase } from './configs';
 
 var moment = require('moment-timezone');
 
@@ -13,6 +14,7 @@ class EditWorkoutModule extends React.Component {
 		"show": PropTypes.bool.isRequired,
 		"updateDayContentFunc": PropTypes.func.isRequired,
 		'deleteWorkoutFunc': PropTypes.func.isRequired,
+		'saveFunc': PropTypes.func.isRequired,
 	};
 
 	constructor(props) {
@@ -44,40 +46,69 @@ class EditWorkoutModule extends React.Component {
 			return (null);
 		};
 
-		const modalStyle = {
-			flex: "0 0 35%",
-		};
-
 		return (
-			<div style={{ modalStyle }}>
-				<h1>{moment(this.props.payload.startDate).format(editModuleDateDisplayFormat)}</h1>
-				<h2>Time</h2>
-				<TimeEntry
-					date={this.props.payload.startDate}
-					updateTimeCallback={(newDateTime) => {
-						this.handleWorkoutChange(newDateTime, workoutFields.STARTDATE);
-					}}
-				/>
+			<Box
+				pad='small'
+			>
+				<Box
+					alignSelf='start'
+				>
+					<Button 
+						onClick={() => this.props.saveFunc()}
+						label='Save'
+						primary
+						icon={<Save />}
+					/>
+				</Box>
+				<br/>
+				<Box direction='row'>
+					<TimeEntry
+						date={this.props.payload.startDate}
+						updateTimeCallback={(newDateTime) => {
+							this.handleWorkoutChange(newDateTime, workoutFields.STARTDATE);
+						}}
+					/>
+					<Heading level={3} margin='none'>
+						{moment(this.props.payload.startDate).format(editModuleDateDisplayFormat)}
+					</Heading>
+				</Box>
+				<br/>
+				<Box width='xsmall'>
+					<FormField label="Mileage">
+						<TextInput 
+							placeholder="Run Mileage"
+							type="number"
+							size='xlarge'
+							value={this.props.payload.milage.goal}
+							onChange={(e) => {
+								this.handleWorkoutChange(Number(e.target.value), workoutFields.MILAGE_GOAL)}
+							}
+						/>
+					</FormField>
+				</Box>
+				<br/>
+				<Box>
+					<Heading level={3}>Notes</Heading>
+					<TextArea
+						value={this.props.payload.content} 
+						onChange={(e) => this.handleWorkoutChange(e.target.value, workoutFields.CONTENT)}
+					/>
+				</Box>
+				<br/>
+				<Box>
+					<RadioButtonGroup
+						options={[...Object.values(workoutTypes)].map(x => toSentenceCase(x))}
+						value={this.props.payload.type}
+						onChange={(e) => {
+							this.handleWorkoutChange(e.target.value, workoutFields.TYPE)
+						}}
+					/>
+				</Box>
 
-				<br />
-				<br />
-				<h2>Type</h2>
-				<textarea value={this.props.payload.type} onChange={(e) => this.handleWorkoutChange(e.target.value, workoutFields.TYPE)} />
-				<br />
-				<br />
-
-				<h2>Content</h2>
-				<textarea value={this.props.payload.content} onChange={(e) => this.handleWorkoutChange(e.target.value, workoutFields.CONTENT)} />
-				<br />
-				<br />
-
-				<h2>Milage</h2>
-				<input type="number" value={this.props.payload.milage.goal} onChange={(e) => this.handleWorkoutChange(Number(e.target.value), workoutFields.MILAGE_GOAL)} />
-				<div className="footer">
-					<button onClick={this.props.onClose}>Close</button>
-					<button onClick={this.handleDelete}>Delete</button>
-				</div>
-			</div>
+				<br/>
+				<button onClick={this.props.onClose}>Close</button>
+				<button onClick={this.handleDelete}>Delete</button>
+			</Box>
 		);
 	}
 }

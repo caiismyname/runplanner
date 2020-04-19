@@ -40,6 +40,11 @@ export const autofillDistributions = {
 	STAIRCASEDOWN: "staircaseDown",
 };
 
+export const workoutTypes = {
+	WORKOUT: 'workout',
+	RECOVERY: 'recovery',
+};
+
 // Payload is consistently repeated across PropTypes
 export const payloadPropType = PropTypes.shape({
 	"content": PropTypes.string,
@@ -80,3 +85,7 @@ export const grommetTheme = {
 	  },
 	},
   };
+
+export const toSentenceCase = (word) => {
+	return (word[0].toUpperCase() + word.slice(1).toLowerCase());
+};

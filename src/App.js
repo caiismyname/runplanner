@@ -338,6 +338,7 @@ class MainPanel extends React.Component {
 		this.signinHandler = this.signinHandler.bind(this);
 		this.authCodeHandler = this.authCodeHandler.bind(this);
 		this.onboardingHandler = this.onboardingHandler.bind(this);
+		this.updateDB = this.updateDB.bind(this);
 
 		this.state = {
 			// local state control (not loaded from anywhere)
@@ -778,8 +779,8 @@ class MainPanel extends React.Component {
 
 		const content =
 			<Grid
-				columns={['auto', 'small']}
-				rows={['full']}
+				columns={['auto', 'medium']}
+				rows={['auto']}
 				fill={true}
 				areas={[
 					{
@@ -818,6 +819,7 @@ class MainPanel extends React.Component {
 						deleteWorkoutFunc={(workoutID) => this.deleteWorkouts([workoutID])}
 						payload={editWorkoutModulePayload}
 						id={editWorkoutModuleConfig.workoutID}
+						saveFunc={() => this.updateDB()}
 					/>
 				</Box>
 			</Grid>;
@@ -827,9 +829,6 @@ class MainPanel extends React.Component {
 				{/* <button onClick={() => this.switchDisplayModes()}>
 					{"Switch to " + alternateDisplayMode + " mode"}
 				</button> */}
-				<button onClick={() => this.updateDB()}>
-					Save Edits
-				</button>
 				{content}
 			</Grommet>
 		);
