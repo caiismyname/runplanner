@@ -308,6 +308,14 @@ class DayCell extends React.Component {
 		payloads: PropTypes.arrayOf(payloadWithIDPropType).isRequired,
 	};
 
+	constructor(props) {
+		super(props);
+
+		this.state = {
+			showAddButton: false,
+		};
+	}
+
 	generateDisplayDate() {
 		if (this.props.date === "") {
 			return (null);
@@ -319,19 +327,18 @@ class DayCell extends React.Component {
 		const content = [];
 		if (this.props.payloads[0].id !== "") {
 			this.props.payloads.forEach((workout) => {
+
+				const label = workout.payload.milage.goal !== 0
+					? workout.payload.milage.goal + ' miles'
+					: 'Run';
+
 				content.push(
-					<div
+					<Button
 						key={workout.id}
-						style={{ border: "1px solid green" }}
 						onClick={() => this.props.addNewWorkoutHandler(workout.payload.startDate, workout.id)}
-					>
-						<h3>{workout.payload.type}</h3>
-						<p>{workout.payload.content}</p>
-						{workout.payload.milage.goal !== 0
-							? <p>{workout.payload.milage.goal + " miles"}</p>
-							: null
-						}
-					</div>
+						label={label}
+						margin={{bottom: 'xsmall'}}
+					/>
 				);
 			});
 		}
@@ -342,21 +349,34 @@ class DayCell extends React.Component {
 				direction='column'
 				width='100%'
 				pad='xsmall'
-				fill='vertical'
+				alignContent='start'
+				algin='start'
+				overflow='scroll'
+				onMouseEnter={() => {this.setState({showAddButton: true})}}
+				onMouseLeave={() => {this.setState({showAddButton: false})}}
 			>
 				<Heading 
-					level={1}
+					level={3}
 					size='small'
 					margin='none'
 				>
 					{this.generateDisplayDate()}
 				</Heading>
 				{content}
-				<Button
-					onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
-					primary
-					icon={<Add />}
-				/>
+				{
+					this.state.showAddButton 
+					? 
+						// margin.top = auto is so the button sticks to the bottom
+						<Box alignSelf='start' margin={{top: 'auto'}}>
+							<Button
+								onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
+								primary
+								icon={<Add />}
+							/>
+						</Box>
+					: null
+				}
+				
 			</Box>
 		);
 	}
