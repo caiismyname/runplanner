@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Button, Heading } from 'grommet';
-import { Add, Subtract } from 'grommet-icons';
+import { Box, Button, Heading, Meter, TextInput} from 'grommet';
+import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
 import { defaultView, serverDateFormat, calendarDateDisplayFormat, calendarDayLabelFormat, payloadWithIDPropType, weeklyGoalPayloadPropType } from './configs';
 import './App.css';
@@ -205,6 +205,24 @@ class WeekDisplay extends React.Component {
 		autofillWeeklyGoalHandler: PropTypes.func,
 	};
 
+	computeWeekTotalMilage() {
+		return(
+			this.props.days.reduce((weekTotal, day) => {
+				const dayTotal =  day.payloads
+					? day.payloads.reduce((total, cur) => {
+						const dayMilage = cur.payload.milage.actual
+							? cur.payload.milage.actual
+							: cur.payload.milage.goal;
+		
+						return (total + dayMilage);
+					},0)
+					: 0;
+
+				return (weekTotal + dayTotal);
+			}, 0)
+		);
+	}
+
 	render() {
 		const days = this.props.days.slice()
 		const dayCells = [];
@@ -214,6 +232,7 @@ class WeekDisplay extends React.Component {
 			<WeekGoalControl
 				key={this.props.goal.payload.startDate}
 				goal={this.props.goal}
+				totalMilage={this.computeWeekTotalMilage()}
 				sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
 				autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
 			/>
@@ -232,8 +251,10 @@ class WeekDisplay extends React.Component {
 					// From the react gods on github: 
 					// An input should be either uncontrolled (value always undef/null) or controlled (value is a string, so it should be an empty string rather than null) for its entire lifetime.
 					// This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
-					date={value ? value.date : ""}
-					payloads={value.payloads ? value.payloads : [{ payload: { "content": "", "type": "", "date": "" }, id: "" }]}
+					date={value ? value.date : ''}
+					payloads={value.payloads 
+						? value.payloads 
+						: [{ payload: { 'content': '', 'type': '', 'date': '', milage: {goal: 0} }, id: '' }]}
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
 					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
 				/>
@@ -251,8 +272,17 @@ class WeekDisplay extends React.Component {
 class WeekGoalControl extends React.Component {
 	static propTypes = {
 		goal: weeklyGoalPayloadPropType,
+		totalMilage: PropTypes.number,
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
+	}
+
+	constructor(props) {
+		super(props);
+
+		this.state = {
+			showEditGoal: false,
+		}
 	}
 
 	handleGoalChange(newValue) {
@@ -262,41 +292,83 @@ class WeekGoalControl extends React.Component {
 	}
 
 	render() {
-		if ("goalID" in this.props.goal) { // This week has a goal
-			return (
-				<Box
-					width='100%'
-					border={true}
-					pad='xsmall'
-				>
-					<input
-						type="number"
-						value={this.props.goal.payload.goalValue}
-						onChange={(e) => this.handleGoalChange(Number(e.target.value))}
+		const goalDisplay = 
+			<Box
+				width='100%'
+				border={true}
+				pad='xsmall'
+				justify='center'
+				align='center'
+				onClick={() => this.setState({showEditGoal: true})}
+				focusIndicator={false}
+			>
+				<div style={{position: 'absolute', cursor: 'pointer'}}>
+					<Meter
+						type='circle'
+						thickness='small'
+						size='xsmall'
+						alignSelf='center'
+						round
+						max={this.props.goal.payload.goalValue}
+						values={[{value: this.props.totalMilage,}]}
 					/>
-					miles
-					<button onClick={() => this.props.autofillWeeklyGoalHandler(this.props.goal.goalID)}> Autofill</button>
-					</Box>
-			);
-		} else { // This week doesn't have a goal
-			return (
-				<Box
-					width='100%'
-					border={true}
-					pad='xsmall'
+				</div>
+
+				<div
+					style={{
+						position: 'absolute',
+						textAlign: 'center',
+						zIndex: -1,
+					}}
 				>
-					<h2>No goal set</h2>
-					<button
-						onClick={() => {
-							const newGoal = { ...this.props.goal }
-							newGoal.payload.goalValue = 40;
-							this.props.sendWeeklyGoalsToDBHandler([newGoal]);
+					<h2>
+						{this.props.totalMilage}
+						<br/>
+						{this.props.goal.payload.goalValue ? this.props.goal.payload.goalValue : '--'}
+					</h2>
+				</div>
+				
+				<Box alignSelf='end' margin={{top: 'auto'}}>
+					<Button 
+						onClick={(event) => {
+							// This stops the container div from registering a click when the button is clicked
+							if (event.stopPropagation) {
+								event.stopPropagation();
+							}
+							this.props.autofillWeeklyGoalHandler(this.props.goal.goalID)
 						}}
-					>
-						Set Goal
-					</button>
+						icon={<Share size='small'/>}
+						primary
+					/>
 				</Box>
-			);
+			</Box>;
+		
+		const editDisplay = 
+			<Box
+				width='100%'
+				border={true}
+				pad='xsmall'
+				justify='center'
+				align='start'
+			>
+				<TextInput
+					placeholder='Week Milage Goal'
+					value={this.props.goal.payload.goalValue}
+					onChange={(e) => {
+						this.handleGoalChange(Number(e.target.value))
+					}}
+				/>
+				<Button
+					onClick={() => {this.setState({showEditGoal: false})}}
+					margin={{top: 'small'}}
+					label='Close'
+				/>
+			</Box>
+	
+		if (this.state.showEditGoal) {
+			return (editDisplay);
+		} else {
+			return (goalDisplay);
 		}
 	}
 }
