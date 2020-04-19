@@ -1,10 +1,10 @@
 import React from 'react';
-import { Grommet } from 'grommet';
+import { Box, Grid, Grommet } from 'grommet';
 import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import { defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes } from './configs';
+import { defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes, grommetTheme } from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import EditWorkoutModule from "./EditWorkoutModule";
@@ -742,16 +742,6 @@ class MainPanel extends React.Component {
 
 
 	render() {
-		const theme = {
-			global: {
-			  font: {
-				family: 'Roboto',
-				size: '14px',
-				height: '20px',
-			  },
-			},
-		  };
-
 		if (this.state.pendingUserLoading) {
 			return (null);
 		}
@@ -787,16 +777,24 @@ class MainPanel extends React.Component {
 		// Need failure case
 
 		const content =
-			<div style={{ display: "flex" }}>
-				<EditWorkoutModule
-					show={editWorkoutModuleConfig.showingEditWorkoutModule}
-					onClose={() => this.toggleEditWorkoutModule("", "")}
-					updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
-					deleteWorkoutFunc={(workoutID) => this.deleteWorkouts([workoutID])}
-					payload={editWorkoutModulePayload}
-					id={editWorkoutModuleConfig.workoutID}
-				/>
-				<div style={{ flex: "1" }}>
+			<Grid
+				columns={['auto', 'small']}
+				rows={['full']}
+				fill={true}
+				areas={[
+					{
+						name: 'calendar', 
+						start: [0,0],
+						end: [0,0],
+					},
+					{
+						name: 'editWorkoutModule',
+						start: [1,0],
+						end: [1,0],
+					}
+				]}
+			>
+				<Box gridArea="calendar">
 					<Calendar
 						currentMonth={currentMonth.getMonthInfo()}
 						decrementMonthHandler={() => this.decrementMonth()}
@@ -811,23 +809,28 @@ class MainPanel extends React.Component {
 						startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
 						mainTimezone={this.state.userConfig.mainTimezone}
 					/>
-				</div>
-			</div>;
+				</Box>
+				<Box gridArea="editWorkoutModule">
+					<EditWorkoutModule
+						show={editWorkoutModuleConfig.showingEditWorkoutModule}
+						onClose={() => this.toggleEditWorkoutModule("", "")}
+						updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
+						deleteWorkoutFunc={(workoutID) => this.deleteWorkouts([workoutID])}
+						payload={editWorkoutModulePayload}
+						id={editWorkoutModuleConfig.workoutID}
+					/>
+				</Box>
+			</Grid>;
 
 		return (
-			<Grommet theme={theme}>
-				<div>
-					<h1>{"Hi " + this.state.name + "!"}</h1>
-
-					<button onClick={() => this.switchDisplayModes()}>
-						{"Switch to " + alternateDisplayMode + " mode"}
-					</button>
-					<button onClick={() => this.updateDB()}>
-						Save Edits
-					</button>
-
-					{content}
-				</div>
+			<Grommet theme={grommetTheme}>
+				{/* <button onClick={() => this.switchDisplayModes()}>
+					{"Switch to " + alternateDisplayMode + " mode"}
+				</button> */}
+				<button onClick={() => this.updateDB()}>
+					Save Edits
+				</button>
+				{content}
 			</Grommet>
 		);
 	}

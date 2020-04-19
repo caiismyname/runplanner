@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Grommet, Button} from 'grommet';
+import { Box, Button, Heading } from 'grommet';
+import { Add, Subtract } from 'grommet-icons';
 import PropTypes from 'prop-types';
-import { defaultView, serverDateFormat, dateDisplayFormat, payloadWithIDPropType, weeklyGoalPayloadPropType } from './configs';
+import { defaultView, serverDateFormat, calendarDateDisplayFormat, calendarDayLabelFormat, payloadWithIDPropType, weeklyGoalPayloadPropType } from './configs';
 import './App.css';
 
 var moment = require('moment-timezone');
@@ -84,21 +85,24 @@ class Calendar extends React.Component {
 
 	generateHeaderDayLabels() {
 		let daysOfWeek = [];
-		let dayFormatting = "ddd"; // ddd = Mon | dddd = Monday 
+		
 		for (let i = 0; i < 14; i++) {
 			// Order: Sun --> Sat
-			daysOfWeek.push(moment().day(i % 7).format(dayFormatting));
+			daysOfWeek.push(moment().day(i % 7).format(calendarDayLabelFormat));
 		}
 		daysOfWeek = daysOfWeek.slice(this.props.startingDayOfWeek, this.props.startingDayOfWeek + 7);
 
-		const dayLabels = daysOfWeek.map((value, index) => {
-			return (<div key={value} style={{width: '100%'}}><h1>{value}</h1></div>);
-		});
+		const dayLabels = [<Box fill='horizontal'></Box>]; // Prefill with spacer on left for goals
+		// Leave space for the goal module on the left
+		dayLabels.push(...daysOfWeek.map((value, index) => {
+			return (<Box align='center' fill='horizontal'><Heading level={5}>{value}</Heading></Box>);
+		}));
 
-		// For the goal module
-		dayLabels.push(<div style={{width: '100%'}}></div>);
-
-		return dayLabels;
+		return (
+			<Box direction='row'>
+				{dayLabels}
+			</Box>
+		);
 	}
 
 	render() {
@@ -136,20 +140,18 @@ class Calendar extends React.Component {
 				};
 
 			return (
-				<div key={index.toString()}>
-					<WeekDisplay
-						days={days}
-						addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
-						goal={thisWeekGoal}
-						sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
-						autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
-					/>
-				</div>
+				<WeekDisplay
+					days={days}
+					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+					goal={thisWeekGoal}
+					sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
+					autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
+				/>
 			);
 		});
 
 		return (
-			<div>
+			<Box height='100vh'>
 				{this.props.defaultView === defaultView.CALENDAR ?
 					<CalendarMonthControl
 						currentMonth={this.props.currentMonth}
@@ -158,13 +160,11 @@ class Calendar extends React.Component {
 					/>
 					: null
 				}
-				<Box 
-					direction='row'
-				>
-					{this.generateHeaderDayLabels()}
+				{this.generateHeaderDayLabels()}
+				<Box fill={true}>
+					{weekElements}
 				</Box>
-				{weekElements}
-			</div>
+			</Box>	
 		);
 	}
 }
@@ -182,13 +182,11 @@ class CalendarMonthControl extends React.Component {
 
 	render() {
 		return (
-			<div>
+			<Box direction='row'>
 				<h1>{moment(this.props.currentMonth.month).format("MMMM YYYY")}</h1>
-				<div>
-					<Button onClick={() => this.props.decrementMonthHandler()} label='<'/>
-					<Button onClick={() => this.props.incrementMonthHandler()} label='>'/>
-				</div>
-			</div>
+				<Button onClick={() => this.props.decrementMonthHandler()} primary icon={<Subtract />}/>
+				<Button onClick={() => this.props.incrementMonthHandler()} primary icon={<Add />}/>
+			</Box>
 		);
 	}
 }
@@ -209,26 +207,9 @@ class WeekDisplay extends React.Component {
 
 	render() {
 		const days = this.props.days.slice()
-		const dayCells = days.map((value, index) => {
-			if (isEmptyObject(value)) {
-				// Still have to return a div to keep flexbox spacing correct for the whole week.
-				return <div className="dayCell" key={index}></div>;
-			}
-			return (
-				<div className="dayCell" key={index}>
-					<DayCell
-						// From the react gods on github: 
-						// An input should be either uncontrolled (value always undef/null) or controlled (value is a string, so it should be an empty string rather than null) for its entire lifetime.
-						// This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
-						date={value ? value.date : ""}
-						payloads={value.payloads ? value.payloads : [{ payload: { "content": "", "type": "", "date": "" }, id: "" }]}
-						// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
-						addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
-					/>
-				</div>
-			);
-		});
+		const dayCells = [];
 
+		// Goal Controls are placed on the left of the calendar
 		dayCells.push(
 			<WeekGoalControl
 				key={this.props.goal.payload.startDate}
@@ -237,9 +218,30 @@ class WeekDisplay extends React.Component {
 				autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
 			/>
 		);
+		dayCells.push(...days.map((value, index) => {
+			if (isEmptyObject(value)) {
+				// Still have to return a div to keep flexbox spacing correct for the whole week.
+				return (<Box
+					border={true}
+					width='100%'
+					pad='xsmall'
+				></Box>);
+			}
+			return (
+				<DayCell
+					// From the react gods on github: 
+					// An input should be either uncontrolled (value always undef/null) or controlled (value is a string, so it should be an empty string rather than null) for its entire lifetime.
+					// This solves the problem of elements not refreshing when their value changes from non-null/non-undef to null/undef.
+					date={value ? value.date : ""}
+					payloads={value.payloads ? value.payloads : [{ payload: { "content": "", "type": "", "date": "" }, id: "" }]}
+					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
+					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+				/>
+			);
+		}));
 
 		return (
-			<Box direction='row'>
+			<Box direction='row' fill={true}>
 				{dayCells}
 			</Box>
 		);
@@ -262,7 +264,11 @@ class WeekGoalControl extends React.Component {
 	render() {
 		if ("goalID" in this.props.goal) { // This week has a goal
 			return (
-				<div>
+				<Box
+					width='100%'
+					border={true}
+					pad='xsmall'
+				>
 					<input
 						type="number"
 						value={this.props.goal.payload.goalValue}
@@ -270,11 +276,15 @@ class WeekGoalControl extends React.Component {
 					/>
 					miles
 					<button onClick={() => this.props.autofillWeeklyGoalHandler(this.props.goal.goalID)}> Autofill</button>
-				</div>
+					</Box>
 			);
 		} else { // This week doesn't have a goal
 			return (
-				<div>
+				<Box
+					width='100%'
+					border={true}
+					pad='xsmall'
+				>
 					<h2>No goal set</h2>
 					<button
 						onClick={() => {
@@ -285,7 +295,7 @@ class WeekGoalControl extends React.Component {
 					>
 						Set Goal
 					</button>
-				</div>
+				</Box>
 			);
 		}
 	}
@@ -302,13 +312,12 @@ class DayCell extends React.Component {
 		if (this.props.date === "") {
 			return (null);
 		}
-		return moment(this.props.date).format(dateDisplayFormat);
+		return moment(this.props.date).format(calendarDateDisplayFormat);
 	}
 
 	render() {
 		const content = [];
 		if (this.props.payloads[0].id !== "") {
-			// if (this.props.payloads.length > 0) {
 			this.props.payloads.forEach((workout) => {
 				content.push(
 					<div
@@ -327,21 +336,28 @@ class DayCell extends React.Component {
 			});
 		}
 
-		const plusButton = (
-			<button
-				style={{ width: "34%", margin: "auto", display: "block", border: "2px solid red" }}
-				onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
-			>
-				<h1>+</h1>
-			</button>
-		);
-
 		return (
-			<div>
-				<h2>{this.generateDisplayDate()}</h2>
+			<Box
+				border={true}
+				direction='column'
+				width='100%'
+				pad='xsmall'
+				fill='vertical'
+			>
+				<Heading 
+					level={1}
+					size='small'
+					margin='none'
+				>
+					{this.generateDisplayDate()}
+				</Heading>
 				{content}
-				{plusButton}
-			</div>
+				<Button
+					onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
+					primary
+					icon={<Add />}
+				/>
+			</Box>
 		);
 	}
 }

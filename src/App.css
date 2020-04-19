@@ -26,6 +26,10 @@
   border: 1px solid black;
 }
 
+.fullWidth {
+  width: 100%;
+}
+
 .weekDisplay, .dayLabels {
   display: flex;
   justify-content: space-around;

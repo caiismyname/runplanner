@@ -22,7 +22,10 @@ export const timeFields = {
 	HOUR: "hour",
 	MINUTE: "minute",
 };
-export const dateDisplayFormat = "M/DD/YY";
+export const calendarDateDisplayFormat = "D";
+export const editModuleDateDisplayFormat = "M-DD-YY";
+export const calendarDayLabelFormat = "dddd";
+
 export const creationTypes = {
 	OWNER: "owner",
 	AUTOFILLWEEK: "autofillWeek",
@@ -67,3 +70,13 @@ export const weeklyGoalPayloadPropType = PropTypes.shape({
 export const autofillTypes = {
 	WEEKLY_MILAGE_GOAL: "weekly_milage_goal",
 };
+
+export const grommetTheme = {
+	global: {
+	  font: {
+		family: 'Helvetica Neue',
+		size: '14px',
+		height: '20px',
+	  },
+	},
+  };
