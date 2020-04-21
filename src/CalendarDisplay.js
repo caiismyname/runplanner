@@ -398,7 +398,11 @@ class DayCell extends React.Component {
 		if (this.props.date === "") {
 			return (null);
 		}
-		return moment(this.props.date).format(calendarDateDisplayFormat);
+		return (moment(this.props.date).format(calendarDateDisplayFormat));
+	}
+
+	isToday() {
+		return (moment().isSame(this.props.date, 'day'));
 	}
 
 	render() {
@@ -432,6 +436,7 @@ class DayCell extends React.Component {
 				overflow='scroll'
 				onMouseEnter={() => {this.setState({showAddButton: true})}}
 				onMouseLeave={() => {this.setState({showAddButton: false})}}
+				background={this.isToday() ? 'accent-4' : ''}
 			>
 				<Heading 
 					level={3}
