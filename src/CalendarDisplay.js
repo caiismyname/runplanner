@@ -229,6 +229,13 @@ class WeekDisplay extends React.Component {
 		);
 	}
 
+	isThisWeek() {
+		return (
+			moment().isSameOrAfter(this.props.days[0].date, 'day') 
+			&& moment().isSameOrBefore(this.props.days[this.props.days.length - 1].date, 'day')
+		);
+	}
+
 	render() {
 		const days = this.props.days.slice()
 		const dayCells = [];
@@ -263,6 +270,7 @@ class WeekDisplay extends React.Component {
 						: [{ payload: { 'content': '', 'type': '', 'date': '', milage: {goal: 0} }, id: '' }]}
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
 					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+					isThisWeek={this.isThisWeek()}
 				/>
 			);
 		}));
@@ -384,6 +392,7 @@ class DayCell extends React.Component {
 		addNewWorkoutHandler: PropTypes.func.isRequired,
 		date: PropTypes.string.isRequired,
 		payloads: PropTypes.arrayOf(payloadWithIDPropType).isRequired,
+		isThisWeek: PropTypes.bool.isRequired
 	};
 
 	constructor(props) {
@@ -402,6 +411,9 @@ class DayCell extends React.Component {
 	}
 
 	isToday() {
+		if (!this.props.isThisWeek) {
+			return (false);
+		}
 		return (moment().isSame(this.props.date, 'day'));
 	}
 
@@ -425,6 +437,14 @@ class DayCell extends React.Component {
 			});
 		}
 
+		// temp for highlighting week/day
+		let background = '';
+		if (this.isToday()) {
+			background = 'accent-4';
+		} else if (this.props.isThisWeek) {
+			background = 'accent-3'
+		}
+
 		return (
 			<Box
 				border={true}
@@ -436,7 +456,7 @@ class DayCell extends React.Component {
 				overflow='scroll'
 				onMouseEnter={() => {this.setState({showAddButton: true})}}
 				onMouseLeave={() => {this.setState({showAddButton: false})}}
-				background={this.isToday() ? 'accent-4' : ''}
+				background={background}
 			>
 				<Heading 
 					level={3}
