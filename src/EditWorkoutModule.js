@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, Heading, TextInput, TextArea, FormField, RadioButtonGroup } from 'grommet';
 import { Save } from 'grommet-icons';
-import { workoutFields, timeFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes, toSentenceCase } from './configs';
+import { workoutFields, timeFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes } from './configs';
 
 var moment = require('moment-timezone');
 
@@ -110,7 +110,7 @@ class EditWorkoutModule extends React.Component {
 				<br/>
 				<Box>
 					<RadioButtonGroup
-						options={[...Object.values(workoutTypes)].map(x => toSentenceCase(x))}
+						options={[...Object.values(workoutTypes)]}
 						value={this.props.payload.type}
 						onChange={(e) => {
 							this.handleWorkoutChange(e.target.value, workoutFields.TYPE)

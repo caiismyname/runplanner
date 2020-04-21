@@ -4,7 +4,7 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import { defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes, grommetTheme } from './configs';
+import { defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes, grommetTheme, workoutTypes } from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import EditWorkoutModule from "./EditWorkoutModule";
@@ -100,7 +100,7 @@ class WorkoutHandler {
 		return ({
 			startDate: date.toISOString(),
 			content: "",
-			type: "",
+			type: workoutTypes.RECOVERY,
 			milage: {
 				goal: 0,
 				// actual: 0,

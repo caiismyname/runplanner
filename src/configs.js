@@ -41,8 +41,8 @@ export const autofillDistributions = {
 };
 
 export const workoutTypes = {
-	WORKOUT: 'workout',
-	RECOVERY: 'recovery',
+	WORKOUT: 'Workout',
+	RECOVERY: 'Recovery',
 };
 
 // Payload is consistently repeated across PropTypes
