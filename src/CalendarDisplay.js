@@ -152,16 +152,22 @@ class Calendar extends React.Component {
 
 		return (
 			<Box height='100vh'>
-				{this.props.defaultView === defaultView.CALENDAR ?
-					<CalendarMonthControl
-						currentMonth={this.props.currentMonth}
-						decrementMonthHandler={() => this.props.decrementMonthHandler()}
-						incrementMonthHandler={() => this.props.incrementMonthHandler()}
-					/>
-					: null
+				<Box gridArea='calendarControl' margin={{left: 'medium'}}>
+					{this.props.defaultView === defaultView.CALENDAR ?
+						<CalendarMonthControl
+							currentMonth={this.props.currentMonth}
+							decrementMonthHandler={() => this.props.decrementMonthHandler()}
+							incrementMonthHandler={() => this.props.incrementMonthHandler()}
+						/>
+						: null
 				}
+				</Box>
+				
 				{this.generateHeaderDayLabels()}
-				<Box fill={true}>
+				<Box 
+					gridArea='calendar'
+					fill={true}
+				>
 					{weekElements}
 				</Box>
 			</Box>	

@@ -780,37 +780,40 @@ class MainPanel extends React.Component {
 		const content =
 			<Grid
 				columns={['auto', 'medium']}
-				rows={['auto']}
+				rows={['xsmall', 'auto']}
 				fill={true}
 				areas={[
 					{
-						name: 'calendar', 
+						name: 'calendarControl',
 						start: [0,0],
 						end: [0,0],
 					},
 					{
+						name: 'calendar', 
+						start: [0,1],
+						end: [0,1],
+					},
+					{
 						name: 'editWorkoutModule',
-						start: [1,0],
-						end: [1,0],
-					}
+						start: [1,1],
+						end: [1,1],
+					},
 				]}
 			>
-				<Box gridArea="calendar">
-					<Calendar
-						currentMonth={currentMonth.getMonthInfo()}
-						decrementMonthHandler={() => this.decrementMonth()}
-						incrementMonthHandler={() => this.incrementMonth()}
-						addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
-						workouts={this.state.workouts}
-						sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
-						autofillWeeklyGoalHandler={(goalID) => this.autofillWeeklyGoal(goalID)}
-						weeklyGoals={this.state.weeklyGoals}
-						deadline={this.state.userConfig.countdownConfig.deadline}
-						defaultView={this.state.userConfig.defaultView}
-						startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
-						mainTimezone={this.state.userConfig.mainTimezone}
-					/>
-				</Box>
+				<Calendar
+					currentMonth={currentMonth.getMonthInfo()}
+					decrementMonthHandler={() => this.decrementMonth()}
+					incrementMonthHandler={() => this.incrementMonth()}
+					addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
+					workouts={this.state.workouts}
+					sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
+					autofillWeeklyGoalHandler={(goalID) => this.autofillWeeklyGoal(goalID)}
+					weeklyGoals={this.state.weeklyGoals}
+					deadline={this.state.userConfig.countdownConfig.deadline}
+					defaultView={this.state.userConfig.defaultView}
+					startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
+					mainTimezone={this.state.userConfig.mainTimezone}
+				/>
 				<Box gridArea="editWorkoutModule">
 					<EditWorkoutModule
 						show={editWorkoutModuleConfig.showingEditWorkoutModule}
@@ -829,6 +832,9 @@ class MainPanel extends React.Component {
 				{/* <button onClick={() => this.switchDisplayModes()}>
 					{"Switch to " + alternateDisplayMode + " mode"}
 				</button> */}
+				<Box direction='row' margin={{left: 'medium'}}>
+					<h1>RunPlanner</h1>
+				</Box>
 				{content}
 			</Grommet>
 		);

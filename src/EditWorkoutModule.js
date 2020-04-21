@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, Heading, TextInput, TextArea, FormField, RadioButtonGroup} from 'grommet';
+import { Box, Button, Heading, TextInput, TextArea, FormField, RadioButtonGroup } from 'grommet';
 import { Save } from 'grommet-icons';
 import { workoutFields, timeFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes, toSentenceCase } from './configs';
 
@@ -61,7 +61,7 @@ class EditWorkoutModule extends React.Component {
 					/>
 				</Box>
 				<br/>
-				<Box direction='row'>
+				<Box>
 					<TimeEntry
 						date={this.props.payload.startDate}
 						updateTimeCallback={(newDateTime) => {
@@ -106,8 +106,12 @@ class EditWorkoutModule extends React.Component {
 				</Box>
 
 				<br/>
-				<button onClick={this.props.onClose}>Close</button>
-				<button onClick={this.handleDelete}>Delete</button>
+				{/* <button onClick={this.props.onClose}>Close</button> */}
+				<Box
+					alignSelf='start'
+				>
+					<Button onClick={this.handleDelete} label='Delete' secondary/>
+				</Box>
 			</Box>
 		);
 	}
@@ -154,55 +158,64 @@ class TimeEntry extends React.Component {
 	}
 
 	render() {
-		return (
-			<div style={{ display: "inline" }}>
-				<textarea
-					style={{ float: "left", width: "2em", height: "1em", resize: "none" }}
-					value={this.generateDisplayHour()}
-					onChange={(e) => {
-						const value = e.target.value.slice(0, 2);
-						if (Number(value) > 12) {
-							return;
-						};
+		const edit = 
+			<Box
+				direction='row'
+				gap='xxsmall'
+				align='center'
+			>
+				<div style={{width: '25%', fontSize: '3em'}}>
+					<TextInput
+						style={{textAlign: 'center'}}
+						value={this.generateDisplayHour()}
+						onChange={(e) => {
+							const value = e.target.value.slice(0, 2);
+							if (Number(value) > 12) {
+								return;
+							};
 
-						if (value === "") {
-							this.setState({ blankHour: true });
-						} else {
-							this.setState({ blankHour: false });
-							this.props.updateTimeCallback(this.generateNewDateTime(timeFields.HOUR, value));
-						};
-					}}
-				/>
-				<textarea
-					style={{ float: "left", width: "2em", height: "1em", resize: "none" }}
-					value={this.generateDisplayMinute()}
-					onChange={(e) => {
-						let value = e.target.value.slice(0, 2);
-						if (Number(value) > 59) {
-							return;
-						}
+							if (value === "") {
+								this.setState({ blankHour: true });
+							} else {
+								this.setState({ blankHour: false });
+								this.props.updateTimeCallback(this.generateNewDateTime(timeFields.HOUR, value));
+							};
+						}}
+					/>
+				</div>
+				<div style={{width: '25%', fontSize: '3em'}}>
+					<TextInput
+					style={{textAlign: 'center'}}
+						value={this.generateDisplayMinute()}
+						onChange={(e) => {
+							let value = e.target.value.slice(0, 2);
+							if (Number(value) > 59) {
+								return;
+							}
 
-						if (value === "" || value === "0") {
-							this.setState({ blankMinute: true, minuteDisplayMode: "m" });
-						} else {
-							this.setState({ blankMinute: false, minuteDisplayMode: "m" });
-							this.props.updateTimeCallback(this.generateNewDateTime(timeFields.MINUTE, value));
-						};
-					}}
-					onBlur={() => this.setState({ minuteDisplayMode: "mm" })}
-				/>
-				<button
-					style={{ float: "left" }}
-					onClick={() => {
-						const hourAdjustment = this.generateDisplayPeriod() === "am" ? 12 : -12;
-						const newHour = moment(this.props.date).hour() + hourAdjustment;
-						this.props.updateTimeCallback(this.generateNewDateTime(timeFields.HOUR, newHour));
-					}}
-				>
-					{this.generateDisplayPeriod()}
-				</button>
-			</div>
-		);
+							if (value === "" || value === "0") {
+								this.setState({ blankMinute: true, minuteDisplayMode: "m" });
+							} else {
+								this.setState({ blankMinute: false, minuteDisplayMode: "m" });
+								this.props.updateTimeCallback(this.generateNewDateTime(timeFields.MINUTE, value));
+							};
+						}}
+						onBlur={() => this.setState({ minuteDisplayMode: "mm" })}
+					/>
+					</div>
+				<div style={{width: '20%'}}>
+					<Button
+						onClick={() => {
+							const hourAdjustment = this.generateDisplayPeriod() === "am" ? 12 : -12;
+							const newHour = moment(this.props.date).hour() + hourAdjustment;
+							this.props.updateTimeCallback(this.generateNewDateTime(timeFields.HOUR, newHour));
+						}}
+						label={this.generateDisplayPeriod()}
+					/>
+				</div>
+			</Box>
+		;
+		return (edit);
 	}
 }
 
