@@ -74,10 +74,18 @@ class EditWorkoutModule extends React.Component {
 						<TextInput 
 							placeholder='Run Mileage'
 							type='number'
+							min='0'
 							size='xlarge'
-							value={this.props.payload.milage.goal}
+							// Convert value to string b/c otherwise, React reads 01 and 1 as the same
+							// because it compares the value as numbers.
+							value={String(this.props.payload.milage.goal)}
 							onChange={(e) => {
-								this.handleWorkoutChange(Number(e.target.value), workoutFields.MILAGE_GOAL)}
+								const input = e.target.value;
+								let cleanedInput = input;
+								if (input.length > 1 && input[0] === '0') {
+									cleanedInput = input.slice(1);
+								}
+								this.handleWorkoutChange(Number(cleanedInput), workoutFields.MILAGE_GOAL)}
 							}
 						/>
 					</FormField>
