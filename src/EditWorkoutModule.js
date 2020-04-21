@@ -47,12 +47,8 @@ class EditWorkoutModule extends React.Component {
 		};
 
 		return (
-			<Box
-				pad='small'
-			>
-				<Box
-					alignSelf='start'
-				>
+			<Box pad='small'>
+				<Box alignSelf='start'>
 					<Button 
 						onClick={() => this.props.saveFunc()}
 						label='Save'
@@ -61,6 +57,9 @@ class EditWorkoutModule extends React.Component {
 					/>
 				</Box>
 				<br/>
+				<Heading level={3} size='small' margin='xsmall'>
+					{moment(this.props.payload.startDate).format(editModuleDateDisplayFormat)}
+				</Heading>
 				<Box>
 					<TimeEntry
 						date={this.props.payload.startDate}
@@ -68,16 +67,13 @@ class EditWorkoutModule extends React.Component {
 							this.handleWorkoutChange(newDateTime, workoutFields.STARTDATE);
 						}}
 					/>
-					<Heading level={3} margin='none'>
-						{moment(this.props.payload.startDate).format(editModuleDateDisplayFormat)}
-					</Heading>
 				</Box>
 				<br/>
 				<Box width='xsmall'>
-					<FormField label="Mileage">
+					<FormField label='Mileage'>
 						<TextInput 
-							placeholder="Run Mileage"
-							type="number"
+							placeholder='Run Mileage'
+							type='number'
 							size='xlarge'
 							value={this.props.payload.milage.goal}
 							onChange={(e) => {
