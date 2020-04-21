@@ -21,6 +21,10 @@ class EditWorkoutModule extends React.Component {
 		super(props);
 		this.handleWorkoutChange = this.handleWorkoutChange.bind(this);
 		this.handleDelete = this.handleDelete.bind(this);
+
+		this.state = {
+			edited: false,
+		}
 	}
 
 	handleWorkoutChange(newValue, source) {
@@ -34,6 +38,7 @@ class EditWorkoutModule extends React.Component {
 		}
 
 		this.props.updateDayContentFunc(this.props.id, newPayload);
+		this.setState({edited: true});
 	}
 
 	handleDelete() {
@@ -50,10 +55,14 @@ class EditWorkoutModule extends React.Component {
 			<Box pad='small'>
 				<Box alignSelf='start'>
 					<Button 
-						onClick={() => this.props.saveFunc()}
+						onClick={() => {
+							this.props.saveFunc();
+							this.setState({edited: false});
+						}}
 						label='Save'
 						primary
 						icon={<Save />}
+						style={this.state.edited ? {} : {visibility: 'hidden'}}
 					/>
 				</Box>
 				<br/>
