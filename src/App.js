@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Grid, Grommet } from 'grommet';
+import { Box, Grid, Grommet, Header } from 'grommet';
 import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
@@ -9,6 +9,7 @@ import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import EditWorkoutModule from "./EditWorkoutModule";
 import Calendar from "./CalendarDisplay";
+import HeaderModule from './HeaderModule';
 
 var moment = require('moment-timezone');
 
@@ -789,6 +790,11 @@ class MainPanel extends React.Component {
 						end: [0,0],
 					},
 					{
+						name: 'header',
+						start: [1,0],
+						end: [1,0],
+					},
+					{
 						name: 'calendar', 
 						start: [0,1],
 						end: [0,1],
@@ -800,6 +806,10 @@ class MainPanel extends React.Component {
 					},
 				]}
 			>
+
+				<HeaderModule
+					name={this.state.name}
+				/>
 				<Calendar
 					currentMonth={currentMonth.getMonthInfo()}
 					decrementMonthHandler={() => this.decrementMonth()}
@@ -823,6 +833,7 @@ class MainPanel extends React.Component {
 						payload={editWorkoutModulePayload}
 						id={editWorkoutModuleConfig.workoutID}
 						saveFunc={() => this.updateDB()}
+						name={this.state.name}
 					/>
 				</Box>
 			</Grid>;
@@ -832,9 +843,6 @@ class MainPanel extends React.Component {
 				{/* <button onClick={() => this.switchDisplayModes()}>
 					{"Switch to " + alternateDisplayMode + " mode"}
 				</button> */}
-				<Box direction='row' margin={{left: 'medium'}}>
-					<h1>RunPlanner</h1>
-				</Box>
 				{content}
 			</Grommet>
 		);
