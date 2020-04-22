@@ -151,7 +151,7 @@ class Calendar extends React.Component {
 		});
 
 		return (
-			<Box height='100vh'>
+			<Box height='100vh' background='light-4'>
 				<Box gridArea='calendarControl' margin={{left: 'medium'}}>
 					{this.props.defaultView === defaultView.CALENDAR ?
 						<CalendarMonthControl
@@ -257,6 +257,7 @@ class WeekDisplay extends React.Component {
 					border={true}
 					width='100%'
 					pad='xsmall'
+					background='black'
 				></Box>);
 			}
 			return (
@@ -313,6 +314,7 @@ class WeekGoalControl extends React.Component {
 				pad='xsmall'
 				justify='center'
 				align='center'
+				background='light-2'
 				onClick={() => this.setState({showEditGoal: true})}
 				focusIndicator={false}
 			>
@@ -325,6 +327,7 @@ class WeekGoalControl extends React.Component {
 						round
 						max={this.props.goal.payload.goalValue}
 						values={[{value: this.props.totalMilage,}]}
+						zIndex={1}
 					/>
 				</div>
 
@@ -332,7 +335,6 @@ class WeekGoalControl extends React.Component {
 					style={{
 						position: 'absolute',
 						textAlign: 'center',
-						zIndex: -1,
 					}}
 				>
 					<h2>
@@ -364,6 +366,7 @@ class WeekGoalControl extends React.Component {
 				pad='xsmall'
 				justify='center'
 				align='start'
+				background='light-2'
 			>
 				<TextInput
 					placeholder='Week Milage Goal'
@@ -438,7 +441,7 @@ class DayCell extends React.Component {
 		}
 
 		// temp for highlighting week/day
-		let background = '';
+		let background = 'dark-1';
 		if (this.isToday()) {
 			background = 'accent-4';
 		} else if (this.props.isThisWeek) {
