@@ -14,6 +14,7 @@ class HeaderModule extends React.Component {
                 align='end'
                 gridArea='header'
                 pad='small'
+                background='light-2'
             >
                 <Heading level={1} margin='none'>
                     {appName}

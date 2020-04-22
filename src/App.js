@@ -781,7 +781,7 @@ class MainPanel extends React.Component {
 		const content =
 			<Grid
 				columns={['auto', 'medium']}
-				rows={['xsmall', 'auto']}
+				rows={['xsmall', 'flex']}
 				fill={true}
 				areas={[
 					{
@@ -824,7 +824,10 @@ class MainPanel extends React.Component {
 					startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
 					mainTimezone={this.state.userConfig.mainTimezone}
 				/>
-				<Box gridArea="editWorkoutModule">
+				<Box 
+					gridArea='editWorkoutModule'
+					background='light-2'
+				>
 					<EditWorkoutModule
 						show={editWorkoutModuleConfig.showingEditWorkoutModule}
 						onClose={() => this.toggleEditWorkoutModule("", "")}
@@ -835,11 +838,15 @@ class MainPanel extends React.Component {
 						saveFunc={() => this.updateDB()}
 						name={this.state.name}
 					/>
+					<Box flex={{grow: '1'}} background='light-2'></Box>
 				</Box>
 			</Grid>;
 
 		return (
-			<Grommet theme={grommetTheme}>
+			<Grommet 
+				theme={grommetTheme}
+				full={true}
+			>
 				{/* <button onClick={() => this.switchDisplayModes()}>
 					{"Switch to " + alternateDisplayMode + " mode"}
 				</button> */}
