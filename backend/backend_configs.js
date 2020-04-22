@@ -18,6 +18,11 @@ const autofillDistributions = {
 	STAIRCASEDOWN: "staircaseDown",
 };
 
+const workoutTypes = {
+	WORKOUT: 'Workout',
+	RECOVERY: 'Recovery',
+};
+
 const proceedIfUserExists = (id, successCallback, failureCallback) => {
 	// Users.findOne({ _id: id }).select("_id").lean().then(result => {
 	//     result ? successCallback(result) : failureCallback();
@@ -38,3 +43,4 @@ exports.mongoAddress = mongoAddress;
 exports.creationTypes = creationTypes;
 exports.autofillDistributions = autofillDistributions;
 exports.proceedIfUserExists = proceedIfUserExists;
+exports.workoutTypes = workoutTypes;

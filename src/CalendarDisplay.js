@@ -2,7 +2,15 @@ import React from 'react';
 import { Box, Button, Heading, Meter, TextInput} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
-import { defaultView, serverDateFormat, calendarDateDisplayFormat, calendarDayLabelFormat, payloadWithIDPropType, weeklyGoalPayloadPropType } from './configs';
+import { 
+	defaultView, 
+	serverDateFormat, 
+	calendarDateDisplayFormat, 
+	calendarDayLabelFormat, 
+	payloadWithIDPropType, 
+	weeklyGoalPayloadPropType,
+	creationTypes,
+	goalControlColor } from './configs';
 import './App.css';
 
 var moment = require('moment-timezone');
@@ -333,6 +341,7 @@ class WeekGoalControl extends React.Component {
 						thickness='small'
 						size='xsmall'
 						alignSelf='center'
+						background='dark-4'
 						round
 						max={this.props.goal.payload.goalValue}
 						values={[{value: this.props.totalMilage,}]}
@@ -364,6 +373,7 @@ class WeekGoalControl extends React.Component {
 						}}
 						icon={<Share size='small'/>}
 						primary
+						color={goalControlColor}
 					/>
 				</Box>
 			</Box>;
@@ -387,6 +397,7 @@ class WeekGoalControl extends React.Component {
 				<Button
 					onClick={() => {this.setState({showEditGoal: false})}}
 					margin={{top: 'small'}}
+					color={goalControlColor}
 					label='Close'
 				/>
 			</Box>
@@ -444,6 +455,7 @@ class DayCell extends React.Component {
 						onClick={() => this.props.addNewWorkoutHandler(workout.payload.startDate, workout.id)}
 						label={label}
 						margin={{bottom: 'xsmall'}}
+						color={workout.payload.creationType === creationTypes.OWNER ? 'brand' : goalControlColor}
 					/>
 				);
 			});
@@ -486,7 +498,8 @@ class DayCell extends React.Component {
 							<Button
 								onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
 								primary
-								icon={<Add />}
+								color='brand'
+								icon={<Add size='small'/>}
 							/>
 						</Box>
 					: null

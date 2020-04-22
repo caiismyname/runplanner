@@ -78,6 +78,8 @@ export const autofillTypes = {
 	WEEKLY_MILAGE_GOAL: "weekly_milage_goal",
 };
 
+export const goalControlColor = 'neutral-3';
+
 export const grommetTheme = {
 	global: {
 	  font: {
@@ -87,9 +89,13 @@ export const grommetTheme = {
 	  },
 	  colors: {
 		  brand: '#FFCA58',
+		  focus: 'neutral-4',
 	  }
 	},
-  };
+	meter: {
+		color: goalControlColor,
+	},
+};
 
 export const toSentenceCase = (word) => {
 	return (word[0].toUpperCase() + word.slice(1).toLowerCase());
