@@ -123,7 +123,7 @@ class EditWorkoutModule extends React.Component {
 				<Box
 					alignSelf='start'
 				>
-					<Button onClick={this.handleDelete} label='Delete' secondary/>
+					<Button onClick={this.handleDelete} label='Delete' secondary color='status-critical'/>
 				</Box>
 			</Box>
 		);

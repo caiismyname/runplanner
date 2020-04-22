@@ -188,10 +188,19 @@ class CalendarMonthControl extends React.Component {
 
 	render() {
 		return (
-			<Box direction='row'>
+			<Box 
+				direction='row'
+				align='center'
+				gap='xsmall'
+			>
 				<h1>{moment(this.props.currentMonth.month).format("MMMM YYYY")}</h1>
-				<Button onClick={() => this.props.decrementMonthHandler()} primary icon={<Subtract />}/>
-				<Button onClick={() => this.props.incrementMonthHandler()} primary icon={<Add />}/>
+				<Box>
+					<Button onClick={() => this.props.decrementMonthHandler()} primary icon={<Subtract size='small'/>}/>
+				</Box>
+				<Box>
+					<Button onClick={() => this.props.incrementMonthHandler()} primary icon={<Add size='small'/>}/>
+				</Box>
+				
 			</Box>
 		);
 	}
