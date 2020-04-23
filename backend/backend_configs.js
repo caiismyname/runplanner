@@ -37,6 +37,10 @@ const proceedIfUserExists = (id, successCallback, failureCallback) => {
 	});
 };
 
+const roundToOneDecimal = (number) => {
+	return (Math.round(number * 10) / 10);
+};
+
 exports.serverDateFormat = serverDateFormat;
 exports.PORT = PORT;
 exports.mongoAddress = mongoAddress;
@@ -44,3 +48,4 @@ exports.creationTypes = creationTypes;
 exports.autofillDistributions = autofillDistributions;
 exports.proceedIfUserExists = proceedIfUserExists;
 exports.workoutTypes = workoutTypes;
+exports.roundToOneDecimal = roundToOneDecimal;
