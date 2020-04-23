@@ -1,13 +1,15 @@
 import React from 'react';
+import { Box, Grid, Grommet } from 'grommet';
 import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import { defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes } from './configs';
+import { defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes, grommetTheme, workoutTypes } from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import EditWorkoutModule from "./EditWorkoutModule";
 import Calendar from "./CalendarDisplay";
+import HeaderModule from './HeaderModule';
 
 var moment = require('moment-timezone');
 
@@ -99,7 +101,7 @@ class WorkoutHandler {
 		return ({
 			startDate: date.toISOString(),
 			content: "",
-			type: "",
+			type: workoutTypes.RECOVERY,
 			milage: {
 				goal: 0,
 				// actual: 0,
@@ -311,7 +313,7 @@ class WorkoutHandler {
 
 	generateDisplayWorkouts() {
 		let res = {};
-		Object.keys(this.dates).forEach((date, idx) => {
+		Object.keys(this.dates).forEach(date => {
 			const workoutsOnDate = [];
 			this.dates[date].forEach((workoutID) => {
 				workoutsOnDate.push({ payload: this.workouts[workoutID], id: workoutID });
@@ -319,7 +321,6 @@ class WorkoutHandler {
 
 			res[date] = workoutsOnDate;
 		});
-
 		return res;
 	}
 
@@ -337,6 +338,7 @@ class MainPanel extends React.Component {
 		this.signinHandler = this.signinHandler.bind(this);
 		this.authCodeHandler = this.authCodeHandler.bind(this);
 		this.onboardingHandler = this.onboardingHandler.bind(this);
+		this.updateDB = this.updateDB.bind(this);
 
 		this.state = {
 			// local state control (not loaded from anywhere)
@@ -438,7 +440,7 @@ class MainPanel extends React.Component {
 
 				axios.post(dbAddress + "checkuser", { "id": userID })
 					.then(res => {
-						newState["userExists"] = res.data.userExists;
+						newState.userExists = res.data.userExists;
 						if (res.data.userExists) {
 							this.setState(newState, () => this.populateUser());
 						} else {
@@ -582,7 +584,11 @@ class MainPanel extends React.Component {
 		this.state.workoutHandler.pullWorkoutsFromDB(
 			displayDates.startDate,
 			displayDates.endDate,
-			(workouts) => this.setState({ workouts: workouts })
+			(workouts) => {
+				console.log(this.state.workouts);
+				console.log(workouts);
+				this.setState({ 'workouts': workouts }, () => {console.log('state set')})
+			}
 		);
 	}
 
@@ -776,46 +782,78 @@ class MainPanel extends React.Component {
 		// Need failure case
 
 		const content =
-			<div style={{ display: "flex" }}>
-				<EditWorkoutModule
-					show={editWorkoutModuleConfig.showingEditWorkoutModule}
-					onClose={() => this.toggleEditWorkoutModule("", "")}
-					updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
-					deleteWorkoutFunc={(workoutID) => this.deleteWorkouts([workoutID])}
-					payload={editWorkoutModulePayload}
-					id={editWorkoutModuleConfig.workoutID}
+			<Grid
+				columns={['auto', 'medium']}
+				rows={['xsmall', 'flex']}
+				fill={true}
+				areas={[
+					{
+						name: 'calendarControl',
+						start: [0,0],
+						end: [0,0],
+					},
+					{
+						name: 'header',
+						start: [1,0],
+						end: [1,0],
+					},
+					{
+						name: 'calendar', 
+						start: [0,1],
+						end: [0,1],
+					},
+					{
+						name: 'editWorkoutModule',
+						start: [1,1],
+						end: [1,1],
+					},
+				]}
+			>
+				<HeaderModule
+					name={this.state.name}
 				/>
-				<div style={{ flex: "1" }}>
-					<Calendar
-						currentMonth={currentMonth.getMonthInfo()}
-						decrementMonthHandler={() => this.decrementMonth()}
-						incrementMonthHandler={() => this.incrementMonth()}
-						addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
-						workouts={this.state.workouts}
-						sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
-						autofillWeeklyGoalHandler={(goalID) => this.autofillWeeklyGoal(goalID)}
-						weeklyGoals={this.state.weeklyGoals}
-						deadline={this.state.userConfig.countdownConfig.deadline}
-						defaultView={this.state.userConfig.defaultView}
-						startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
-						mainTimezone={this.state.userConfig.mainTimezone}
+				<Calendar
+					currentMonth={currentMonth.getMonthInfo()}
+					decrementMonthHandler={() => this.decrementMonth()}
+					incrementMonthHandler={() => this.incrementMonth()}
+					addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
+					workouts={this.state.workouts}
+					sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
+					autofillWeeklyGoalHandler={(goalID) => this.autofillWeeklyGoal(goalID)}
+					weeklyGoals={this.state.weeklyGoals}
+					deadline={this.state.userConfig.countdownConfig.deadline}
+					defaultView={this.state.userConfig.defaultView}
+					startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
+					mainTimezone={this.state.userConfig.mainTimezone}
+				/>
+				<Box 
+					gridArea='editWorkoutModule'
+					background='light-2'
+				>
+					<EditWorkoutModule
+						show={editWorkoutModuleConfig.showingEditWorkoutModule}
+						onClose={() => this.toggleEditWorkoutModule("", "")}
+						updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
+						deleteWorkoutFunc={(workoutID) => this.deleteWorkouts([workoutID])}
+						payload={editWorkoutModulePayload}
+						id={editWorkoutModuleConfig.workoutID}
+						saveFunc={() => this.updateDB()}
+						name={this.state.name}
 					/>
-				</div>
-			</div>;
+					<Box background='light-2'></Box>
+				</Box>
+			</Grid>;
 
 		return (
-			<div>
-				<h1>{"Hi " + this.state.name + "!"}</h1>
-
-				<button onClick={() => this.switchDisplayModes()}>
+			<Grommet 
+				theme={grommetTheme}
+				full={true}
+			>
+				{/* <button onClick={() => this.switchDisplayModes()}>
 					{"Switch to " + alternateDisplayMode + " mode"}
-				</button>
-				<button onClick={() => this.updateDB()}>
-					Save Edits
-				</button>
-
+				</button> */}
 				{content}
-			</div>
+			</Grommet>
 		);
 	}
 }

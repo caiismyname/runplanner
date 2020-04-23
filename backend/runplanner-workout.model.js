@@ -10,7 +10,7 @@ let Workout = new Schema({
     payload: {
         type: {
             type: String,
-            // enum: ["None", "Workout", "Recovery", "Long Run", "Race"]
+            enum: ["None", "Workout", "Recovery", "Long Run", "Race"]
         },
         content: {
             type: String,

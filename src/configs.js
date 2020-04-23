@@ -10,6 +10,8 @@ export const gClientID = "953053521176-om8kfj3ei7g0pm6dq6cohhhb7ucnhaje.apps.goo
 export const gCalAPIKey = "AIzaSyAS8CDSgFOby27S3H1jy4wmY_-Z3XbxZoA";
 export const gCalDefaultName = "RunPlanner";
 
+export const appName = 'RunPlanner';
+
 // For NewWorkoutModule
 export const workoutFields = {
 	TYPE: "type",
@@ -22,7 +24,10 @@ export const timeFields = {
 	HOUR: "hour",
 	MINUTE: "minute",
 };
-export const dateDisplayFormat = "M/DD/YY";
+export const calendarDateDisplayFormat = "D";
+export const editModuleDateDisplayFormat = "M-DD-YY";
+export const calendarDayLabelFormat = "dddd";
+
 export const creationTypes = {
 	OWNER: "owner",
 	AUTOFILLWEEK: "autofillWeek",
@@ -35,6 +40,11 @@ export const autofillDistributions = {
 	PYRAMID: "pyramid",
 	STAIRCASEUP: "staircaseUp",
 	STAIRCASEDOWN: "staircaseDown",
+};
+
+export const workoutTypes = {
+	WORKOUT: 'Workout',
+	RECOVERY: 'Recovery',
 };
 
 // Payload is consistently repeated across PropTypes
@@ -66,4 +76,27 @@ export const weeklyGoalPayloadPropType = PropTypes.shape({
 // Autofill types
 export const autofillTypes = {
 	WEEKLY_MILAGE_GOAL: "weekly_milage_goal",
+};
+
+export const goalControlColor = 'neutral-3';
+
+export const grommetTheme = {
+	global: {
+	  font: {
+		family: 'Helvetica Neue',
+		size: '14px',
+		height: '20px',
+	  },
+	  colors: {
+		  brand: '#FFCA58',
+		  focus: 'neutral-4',
+	  }
+	},
+	meter: {
+		color: goalControlColor,
+	},
+};
+
+export const toSentenceCase = (word) => {
+	return (word[0].toUpperCase() + word.slice(1).toLowerCase());
 };
