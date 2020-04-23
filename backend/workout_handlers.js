@@ -90,8 +90,8 @@ const updateWorkouts = (workoutsToUpdate, userID, callback) => {
             let workoutToUpdate = workoutsToUpdate[key];
             Workouts.findById(workoutToUpdate.id, function (err, workout) {
                 if (!workout) {
-                    console.log('Could not find workout');
-                    res.status(404).send("Workout not found");
+                    console.log('Could not find workout ' + workoutToUpdate.id);
+                    reject();
                 } else {
                     workout.payload = workoutToUpdate.payload;
                     workout.owner = workoutToUpdate.owner; // There shouldn't be a need to re-save owner 

@@ -19,7 +19,7 @@ let Workout = new Schema({
             // This is technically a datetime
             type: Date,
         },
-        milage: {
+        mileage: {
             goal: {
                 type: Number,
             },

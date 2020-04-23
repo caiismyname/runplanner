@@ -143,7 +143,7 @@ class Calendar extends React.Component {
 					payload: {
 						startDate: startOfWeek.toISOString(),
 						endDate: endOfWeek.toISOString(),
-						goalType: "weekly_milage_goal",
+						goalType: "weekly_mileage_goal",
 					},
 				};
 
@@ -229,16 +229,16 @@ class WeekDisplay extends React.Component {
 		autofillWeeklyGoalHandler: PropTypes.func,
 	};
 
-	computeWeekTotalMilage() {
+	computeWeekTotalmileage() {
 		return(
 			this.props.days.reduce((weekTotal, day) => {
 				const dayTotal =  day.payloads
 					? day.payloads.reduce((total, cur) => {
-						const dayMilage = cur.payload.milage.actual
-							? cur.payload.milage.actual
-							: cur.payload.milage.goal;
+						const daymileage = cur.payload.mileage.actual
+							? cur.payload.mileage.actual
+							: cur.payload.mileage.goal;
 		
-						return (total + dayMilage);
+						return (total + daymileage);
 					},0)
 					: 0;
 
@@ -263,7 +263,7 @@ class WeekDisplay extends React.Component {
 			<WeekGoalControl
 				key={this.props.goal.payload.startDate}
 				goal={this.props.goal}
-				totalMilage={this.computeWeekTotalMilage()}
+				totalmileage={this.computeWeekTotalmileage()}
 				sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
 				autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
 			/>
@@ -287,7 +287,7 @@ class WeekDisplay extends React.Component {
 					date={value ? value.date : ''}
 					payloads={value.payloads 
 						? value.payloads 
-						: [{ payload: { 'content': '', 'type': '', 'date': '', milage: {goal: 0} }, id: '' }]}
+						: [{ payload: { 'content': '', 'type': '', 'date': '', mileage: {goal: 0} }, id: '' }]}
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
 					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
 					isThisWeek={this.isThisWeek()}
@@ -307,7 +307,7 @@ class WeekDisplay extends React.Component {
 class WeekGoalControl extends React.Component {
 	static propTypes = {
 		goal: weeklyGoalPayloadPropType,
-		totalMilage: PropTypes.number,
+		totalmileage: PropTypes.number,
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
 	}
@@ -347,7 +347,7 @@ class WeekGoalControl extends React.Component {
 						background='dark-4'
 						round
 						max={this.props.goal.payload.goalValue}
-						values={[{value: this.props.totalMilage,}]}
+						values={[{value: this.props.totalmileage,}]}
 						zIndex={1}
 					/>
 				</div>
@@ -359,7 +359,7 @@ class WeekGoalControl extends React.Component {
 					}}
 				>
 					<h2>
-						{this.props.totalMilage}
+						{this.props.totalmileage}
 						<br/>
 						{this.props.goal.payload.goalValue ? this.props.goal.payload.goalValue : '--'}
 					</h2>
@@ -391,7 +391,7 @@ class WeekGoalControl extends React.Component {
 				background='light-2'
 			>
 				<TextInput
-					placeholder='Week Milage Goal'
+					placeholder='Week mileage Goal'
 					value={this.props.goal.payload.goalValue}
 					onChange={(e) => {
 						this.handleGoalChange(Number(e.target.value))
@@ -448,8 +448,8 @@ class DayCell extends React.Component {
 		if (this.props.payloads[0].id !== "") {
 			this.props.payloads.forEach((workout) => {
 
-				const label = workout.payload.milage.goal !== 0
-					? workout.payload.milage.goal + ' miles'
+				const label = workout.payload.mileage.goal !== 0
+					? workout.payload.mileage.goal + ' miles'
 					: 'Run';
 
 				content.push(

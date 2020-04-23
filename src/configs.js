@@ -17,8 +17,8 @@ export const workoutFields = {
 	TYPE: "type",
 	CONTENT: "content",
 	STARTDATE: "startDate",
-	MILAGE_GOAL: "milage.goal",
-	MILAGE_ACTUAL: "milage.actual",
+	mileage_GOAL: "mileage.goal",
+	mileage_ACTUAL: "mileage.actual",
 };
 export const timeFields = {
 	HOUR: "hour",
@@ -52,7 +52,7 @@ export const payloadPropType = PropTypes.shape({
 	"content": PropTypes.string,
 	"date": PropTypes.string,
 	"type": PropTypes.string,
-	"milage": PropTypes.shape({
+	"mileage": PropTypes.shape({
 		"goal": PropTypes.number,
 		"actual": PropTypes.number,
 	}),
@@ -67,7 +67,7 @@ export const weeklyGoalPayloadPropType = PropTypes.shape({
 	payload: PropTypes.shape({
 		startDate: PropTypes.string,
 		endDate: PropTypes.string,
-		goalType: PropTypes.oneOf(["weekly_milage_goal", "weekly_time_goal"]),
+		goalType: PropTypes.oneOf(["weekly_mileage_goal", "weekly_time_goal"]),
 		goalValue: PropTypes.number,
 	}),
 	goalID: PropTypes.string,
@@ -75,7 +75,7 @@ export const weeklyGoalPayloadPropType = PropTypes.shape({
 
 // Autofill types
 export const autofillTypes = {
-	WEEKLY_MILAGE_GOAL: "weekly_milage_goal",
+	WEEKLY_mileage_GOAL: "weekly_mileage_goal",
 };
 
 export const goalControlColor = 'neutral-3';

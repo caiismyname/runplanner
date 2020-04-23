@@ -102,7 +102,7 @@ class WorkoutHandler {
 			startDate: date.toISOString(),
 			content: "",
 			type: workoutTypes.RECOVERY,
-			milage: {
+			mileage: {
 				goal: 0,
 				// actual: 0,
 			},
@@ -206,7 +206,7 @@ class WorkoutHandler {
 				workoutIDs.forEach(workoutID => {
 					const gEventID = this.gEventIDs[workoutID];
 					// const newTitle = this.workouts[workoutID].content;
-					const newTitle = this.workouts[workoutID].milage.goal + " mile run";
+					const newTitle = this.workouts[workoutID].mileage.goal + " mile run";
 					const newStart = this.workouts[workoutID].startDate;
 
 					batch.add(window.gapi.client.calendar.events.update(
