@@ -100,10 +100,10 @@ class Calendar extends React.Component {
 		}
 		daysOfWeek = daysOfWeek.slice(this.props.startingDayOfWeek, this.props.startingDayOfWeek + 7);
 
-		const dayLabels = [<Box fill='horizontal'></Box>]; // Prefill with spacer on left for goals
+		const dayLabels = [<Box fill='horizontal'key={-1}></Box>]; // Prefill with spacer on left for goals
 		// Leave space for the goal module on the left
 		dayLabels.push(...daysOfWeek.map((value, index) => {
-			return (<Box align='center' fill='horizontal'><Heading level={5}>{value}</Heading></Box>);
+			return (<Box align='center' fill='horizontal' key={index}><Heading level={5}>{value}</Heading></Box>);
 		}));
 
 		return (
@@ -154,12 +154,13 @@ class Calendar extends React.Component {
 					goal={thisWeekGoal}
 					sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
 					autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
+					key={index}
 				/>
 			);
 		});
 
 		return (
-			<Box height='100vh' background='light-4'>
+			<Box height='100vh' background='light-4' key={this.props.currentMonth.month}>
 				<Box gridArea='calendarControl' margin={{left: 'medium'}}>
 					{this.props.defaultView === defaultView.CALENDAR ?
 						<CalendarMonthControl
@@ -275,6 +276,7 @@ class WeekDisplay extends React.Component {
 					width='100%'
 					pad='xsmall'
 					background='black'
+					key={index}
 				></Box>);
 			}
 			return (
@@ -289,6 +291,7 @@ class WeekDisplay extends React.Component {
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
 					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
 					isThisWeek={this.isThisWeek()}
+					key={index}
 				/>
 			);
 		}));

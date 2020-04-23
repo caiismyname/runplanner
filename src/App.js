@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Grid, Grommet, Header } from 'grommet';
+import { Box, Grid, Grommet } from 'grommet';
 import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
@@ -313,7 +313,7 @@ class WorkoutHandler {
 
 	generateDisplayWorkouts() {
 		let res = {};
-		Object.keys(this.dates).forEach((date, idx) => {
+		Object.keys(this.dates).forEach(date => {
 			const workoutsOnDate = [];
 			this.dates[date].forEach((workoutID) => {
 				workoutsOnDate.push({ payload: this.workouts[workoutID], id: workoutID });
@@ -321,7 +321,6 @@ class WorkoutHandler {
 
 			res[date] = workoutsOnDate;
 		});
-
 		return res;
 	}
 
@@ -441,7 +440,7 @@ class MainPanel extends React.Component {
 
 				axios.post(dbAddress + "checkuser", { "id": userID })
 					.then(res => {
-						newState["userExists"] = res.data.userExists;
+						newState.userExists = res.data.userExists;
 						if (res.data.userExists) {
 							this.setState(newState, () => this.populateUser());
 						} else {
@@ -585,7 +584,11 @@ class MainPanel extends React.Component {
 		this.state.workoutHandler.pullWorkoutsFromDB(
 			displayDates.startDate,
 			displayDates.endDate,
-			(workouts) => this.setState({ workouts: workouts })
+			(workouts) => {
+				console.log(this.state.workouts);
+				console.log(workouts);
+				this.setState({ 'workouts': workouts }, () => {console.log('state set')})
+			}
 		);
 	}
 
@@ -806,7 +809,6 @@ class MainPanel extends React.Component {
 					},
 				]}
 			>
-
 				<HeaderModule
 					name={this.state.name}
 				/>
@@ -838,7 +840,7 @@ class MainPanel extends React.Component {
 						saveFunc={() => this.updateDB()}
 						name={this.state.name}
 					/>
-					<Box flex={{grow: '1'}} background='light-2'></Box>
+					<Box background='light-2'></Box>
 				</Box>
 			</Grid>;
 
