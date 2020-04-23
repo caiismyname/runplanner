@@ -16,9 +16,9 @@ class HeaderModule extends React.Component {
                 pad='small'
                 background='light-2'
             >
-                {/* <Heading level={1} margin='none'>
+                <Heading level={1} margin='none'>
                     {appName}
-                </Heading> */}
+                </Heading>
                 <Heading level={3} margin='none'>
                     {this.props.name}
                 </Heading>

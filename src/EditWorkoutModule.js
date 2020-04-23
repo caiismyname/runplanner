@@ -29,10 +29,10 @@ class EditWorkoutModule extends React.Component {
 
 	handleWorkoutChange(newValue, source) {
 		let newPayload = { ...this.props.payload };
-		if (source === workoutFields.MILAGE_ACTUAL) {
-			newPayload.milage.actual = newValue;
-		} else if (source === workoutFields.MILAGE_GOAL) {
-			newPayload.milage.goal = newValue;
+		if (source === workoutFields.mileage_ACTUAL) {
+			newPayload.mileage.actual = newValue;
+		} else if (source === workoutFields.mileage_GOAL) {
+			newPayload.mileage.goal = newValue;
 		} else {
 			newPayload[source] = newValue;
 		}
@@ -87,14 +87,14 @@ class EditWorkoutModule extends React.Component {
 							size='xlarge'
 							// Convert value to string b/c otherwise, React reads 01 and 1 as the same
 							// because it compares the value as numbers.
-							value={String(this.props.payload.milage.goal)}
+							value={String(this.props.payload.mileage.goal)}
 							onChange={(e) => {
 								const input = e.target.value;
 								let cleanedInput = input;
 								if (input.length > 1 && input[0] === '0') {
 									cleanedInput = input.slice(1);
 								}
-								this.handleWorkoutChange(Number(cleanedInput), workoutFields.MILAGE_GOAL)}
+								this.handleWorkoutChange(Number(cleanedInput), workoutFields.mileage_GOAL)}
 							}
 						/>
 					</FormField>

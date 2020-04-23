@@ -5,7 +5,7 @@ let WeeklyGoal = new Schema({
     payload: {
         goalType: {
             type: String,
-            enum: ["weekly_milage_goal", "weekly_time_goal"],
+            enum: ["weekly_mileage_goal", "weekly_time_goal"],
         },
         startDate: Date,
         endDate: Date,

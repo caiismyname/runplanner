@@ -36,9 +36,9 @@ const sendGCalEvents = (auth, calendarID, userConfig, workouts, successCallback,
     let promises = [];
 
     workouts.forEach(workout => {
-        const title = workout.payload.milage.goal === 0
+        const title = workout.payload.mileage.goal === 0
             ? "New run"
-            : workout.payload.milage.goal + " mile run";
+            : workout.payload.mileage.goal + " mile run";
         const promise = new Promise(function (resolve, reject) {
             const eventResource = {
                 'calendarId': calendarID,
