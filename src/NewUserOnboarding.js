@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from 'prop-types';
 import { Grommet, Main, Box, Tabs, Tab, Button, Heading, TextInput, Select, RadioButtonGroup} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
-import { grommetTheme, defaultRunDurations, autofillDistributions } from './configs';
+import { grommetTheme, defaultRunDurations, autofillDistributions, defaultView } from './configs';
 
 import TimeEntry from './TimeEntryModule';
 
@@ -61,6 +61,7 @@ class NewUserOnboarding extends React.Component {
                     pad='large'
                     fill={true}
                     border={true}
+                    overflow='scroll'
                 >
                     <Heading level={1}>Welcome to RunPlanner</Heading>
                     <Heading level={3}>Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later.</Heading>
@@ -110,9 +111,21 @@ class NewUserOnboarding extends React.Component {
                             onChange={e => this.setState({autofillDistribution: e.target.value})}
                         />
                     </Box>
+                    <Box>
+                        <Button 
+                            label='Submit'
+                            primary
+                            onClick={() => this.onboardingHandler(
+                                this.state.startOfWeek,
+                                defaultView.CALENDAR,
+                                this.state.timezone,
+                                this.state.runDuration,
+                                this.state.startTime,
+                                this.state.autofillDistribution
+                            )}
+                        />
+                    </Box>
                 </Main>
-
-
             </Grommet>
         );
     }
