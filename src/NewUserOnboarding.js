@@ -86,7 +86,7 @@ class NewUserOnboarding extends React.Component {
                             activeIndex={this.state.startOfWeek}
                             onActive={(index) => {this.setState({startOfWeek: index})}}
                         >
-                            {this.daysOfWeek.map(day => <Tab title={day}/>)}
+                            {this.daysOfWeek.map(day => <Tab title={day} key={day}/>)}
                         </Tabs>
                     </Box>
 
@@ -105,13 +105,14 @@ class NewUserOnboarding extends React.Component {
                             activeIndex={this.state.runDuration}
                             onActive={(index) => {this.setState({runDuration: index})}}
                         >
-                            {defaultRunDurations.map(duration => <Tab title={String(duration)}/>)}
+                            {defaultRunDurations.map(duration => <Tab title={String(duration)} key={duration}/>)}
                         </Tabs>
                     </Box>
 
                     <Box>
                         <Heading level={5}>AutoFill Distribution</Heading>
                         <RadioButtonGroup
+                            name='autofill distribution selector'
                             options={[...Object.values(autofillDistributions)]}
                             value={this.state.autofillDistribution}
                             onChange={e => this.setState({autofillDistribution: e.target.value})}
