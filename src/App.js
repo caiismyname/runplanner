@@ -762,8 +762,8 @@ class MainPanel extends React.Component {
 			return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
 		};
 
-		// short circuit for testing. remember to remove
-		return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
+		// // short circuit for testing. remember to remove
+		// return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
 
 		const currentMonth = this.state.currentMonth;
 		const alternateDisplayMode =

@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from 'prop-types';
-import { Grommet, Main, Box, Tabs, Tab, Button, Heading, TextInput, Select, RadioButtonGroup} from 'grommet';
+import { Grommet, Main, Box, Tabs, Tab, Button, Heading, TextInput, Select, RadioButtonGroup, Paragraph} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import { grommetTheme, defaultRunDurations, autofillDistributions, defaultView } from './configs';
 
@@ -55,26 +55,20 @@ class NewUserOnboarding extends React.Component {
         return (
             <Grommet 
 				theme={grommetTheme}
-				full={true}
+                full
+                background='light-1'
 			>
-                <Main
-                    pad='large'
-                    fill={true}
-                    border={true}
+                <Box
+                    margin='auto'
+                    pad='medium'
+                    width='66%'
                     overflow='scroll'
                 >
                     <Heading level={1}>Welcome to RunPlanner</Heading>
-                    <Heading level={3}>Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later.</Heading>
-                    <Box>
-                        <Tabs
-                            activeIndex={this.state.startOfWeek}
-                            onActive={(index) => {this.setState({startOfWeek: index})}}
-                        >
-                            {this.daysOfWeek.map(day => <Tab title={day}/>)}
-                        </Tabs>
-                    </Box>
+                    <Paragraph>Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later.</Paragraph>
 
-                    <Box>
+                    <Box width='medium'>
+                        <Heading level={5}>Timezone</Heading>
                         <Select
                             // options={['', 'US/Eastern', 'US/Central', 'US/Mountain', 'US/Pacific', 'US/Arizona', 'US/Alaska', 'US/Hawaii']}
                             options={moment.tz.zonesForCountry('US')}
@@ -84,8 +78,19 @@ class NewUserOnboarding extends React.Component {
                             }}
                         />
                     </Box>
-
+                    
                     <Box>
+                        <Heading level={5}>Start of Week</Heading>
+                        <Tabs
+                            alignSelf='start'
+                            activeIndex={this.state.startOfWeek}
+                            onActive={(index) => {this.setState({startOfWeek: index})}}
+                        >
+                            {this.daysOfWeek.map(day => <Tab title={day}/>)}
+                        </Tabs>
+                    </Box>
+
+                    <Box width='medium'>
                         <Heading level={5}>Default start time</Heading>
                         <TimeEntry
                             date={this.generateStartTimeString()}
@@ -94,12 +99,13 @@ class NewUserOnboarding extends React.Component {
                     </Box>
 
                     <Box>
-                        <Heading level={5}>Default Run Duration</Heading>
+                        <Heading level={5}>Default Run Duration (minutes)</Heading>
                         <Tabs
+                            alignSelf='start'
                             activeIndex={this.state.runDuration}
                             onActive={(index) => {this.setState({runDuration: index})}}
                         >
-                            {defaultRunDurations.map(duration => <Tab title={duration}/>)}
+                            {defaultRunDurations.map(duration => <Tab title={String(duration)}/>)}
                         </Tabs>
                     </Box>
 
@@ -111,21 +117,22 @@ class NewUserOnboarding extends React.Component {
                             onChange={e => this.setState({autofillDistribution: e.target.value})}
                         />
                     </Box>
-                    <Box>
+
+                    <Box margin={{top: 'small'}} width='small'>
                         <Button 
                             label='Submit'
                             primary
-                            onClick={() => this.onboardingHandler(
+                            onClick={() => this.props.onboardingHandler(
                                 this.state.startOfWeek,
                                 defaultView.CALENDAR,
                                 this.state.timezone,
-                                this.state.runDuration,
+                                defaultRunDurations[this.state.runDuration],
                                 this.state.startTime,
                                 this.state.autofillDistribution
                             )}
                         />
                     </Box>
-                </Main>
+                </Box>
             </Grommet>
         );
     }
