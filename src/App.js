@@ -584,11 +584,7 @@ class MainPanel extends React.Component {
 		this.state.workoutHandler.pullWorkoutsFromDB(
 			displayDates.startDate,
 			displayDates.endDate,
-			(workouts) => {
-				console.log(this.state.workouts);
-				console.log(workouts);
-				this.setState({ 'workouts': workouts }, () => {console.log('state set')})
-			}
+			(workouts) => { this.setState({ 'workouts': workouts }) }
 		);
 	}
 
@@ -765,6 +761,9 @@ class MainPanel extends React.Component {
 			// If they're not in our DB (userExists), then we need to perform our own onboarding.
 			return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
 		};
+
+		// short circuit for testing. remember to remove
+		return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
 
 		const currentMonth = this.state.currentMonth;
 		const alternateDisplayMode =

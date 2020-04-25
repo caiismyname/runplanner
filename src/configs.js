@@ -28,6 +28,7 @@ export const calendarDateDisplayFormat = "D";
 export const editModuleDateDisplayFormat = "M-DD-YY";
 export const calendarDayLabelFormat = "dddd";
 
+export const defaultRunDurations = [15, 30, 45, 60, 75, 90, 105, 120];
 export const creationTypes = {
 	OWNER: "owner",
 	AUTOFILLWEEK: "autofillWeek",
@@ -35,11 +36,11 @@ export const creationTypes = {
 };
 
 export const autofillDistributions = {
-	EVEN: "even",
-	RANDOM: "random",
-	PYRAMID: "pyramid",
-	STAIRCASEUP: "staircaseUp",
-	STAIRCASEDOWN: "staircaseDown",
+	EVEN: "Even",
+	// RANDOM: "random",
+	// PYRAMID: "pyramid",
+	// STAIRCASEUP: "staircaseUp",
+	// STAIRCASEDOWN: "staircaseDown",
 };
 
 export const workoutTypes = {
