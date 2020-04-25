@@ -11,11 +11,11 @@ const creationTypes = {
 };
 
 const autofillDistributions = {
-	EVEN: "even",
-	RANDOM: "random",
-	PYRAMID: "pyramid",
-	STAIRCASEUP: "staircaseUp",
-	STAIRCASEDOWN: "staircaseDown",
+	EVEN: "Even",
+	// RANDOM: "random",
+	// PYRAMID: "pyramid",
+	// STAIRCASEUP: "staircaseUp",
+	// STAIRCASEDOWN: "staircaseDown",
 };
 
 const workoutTypes = {

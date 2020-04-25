@@ -6,7 +6,7 @@ let User = new Schema({
     calendarID: String,
     config: {
         startingDayOfWeek: {
-            type: Number,
+            type: Number, // 0 is Sunday
             min: 0,
             max: 6
         },

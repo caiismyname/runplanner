@@ -21,11 +21,6 @@
   color: #09d3ac;
 }
 
-/* .dayCell {
-  width: 100%;
-  border: 1px solid black;
-} */
-
 .fullWidth {
   width: 100%;
 }
@@ -34,11 +29,3 @@
   max-width: 35px;
   max-height: 35px;
 }
-
-/* .weekDisplay, .dayLabels {
-  display: flex;
-  justify-content: space-around;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: stretch;
-} */
