@@ -4,7 +4,18 @@ import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
 
-import { defaultView, serverDateFormat, dbAddress, gClientID, gCalAPIKey, gCalDefaultName, creationTypes, grommetTheme, workoutTypes } from './configs';
+import { 
+	defaultView, 
+	serverDateFormat, 
+	dbAddress, 
+	gClientID, 
+	gCalAPIKey, 
+	gCalDefaultName, 
+	creationTypes, 
+	grommetTheme, 
+	workoutTypes,
+	getNumberOfDaysInMonth,
+} from './configs';
 import LoginPage from "./LoginPage";
 import NewUserOnboarding from "./NewUserOnboarding";
 import EditWorkoutModule from "./EditWorkoutModule";
@@ -23,20 +34,15 @@ class MonthHandler {
 		return this.currentMonth.format("YYYY-MM");
 	}
 
-	getNumberOfDaysInMonth(month, year) {
-		// Source: https://www.geeksforgeeks.org/how-to-get-the-number-of-days-in-a-specified-month-using-javascript/
-		return new Date(year, month, 0).getDate();
-	}
-
-	startingDayOfWeek(month, year) {
-		return new Date(month + "-01-" + year).getDay(); // Fucking American date formatting, not ISO
+	getStartingDayOfWeek(month, year) {
+		return new Date((month + 1) + "-01-" + year).getDay(); // Fucking American date formatting, not ISO
 	}
 
 	getMonthInfo() {
 		const now = this.currentMonth; // Moment's months are 0 indexed (0 is January)
 		return ({
-			totalDays: this.getNumberOfDaysInMonth(now.month() + 1, now.year()),
-			startingDayOfWeek: this.startingDayOfWeek(now.month() + 1, now.year()), // 0 is Sunday
+			totalDays: getNumberOfDaysInMonth(now.month(), now.year()),
+			startingDayOfWeek: this.getStartingDayOfWeek(now.month(), now.year()), // 0 is Sunday
 			month: now.format("YYYY-MM"),
 		});
 	}
@@ -473,7 +479,9 @@ class MainPanel extends React.Component {
 							deadline: null,
 						},
 						defaultStartTime: defaultStartTime,
-						autofillDistribution: autofillDistribution,
+						autofillConfig: {
+							distribution: autofillDistribution,
+						},
 					},
 
 					gTokens: {
@@ -517,12 +525,20 @@ class MainPanel extends React.Component {
 		this.setState({ defaultView: this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR });
 	}
 
-	getCurrentDisplayStartEnd() {
+	// This function is used to determine what range of workouts to pull.
+	// The week buffer on either end is to account for the edges of the month.
+	getCurrentDisplayedRange() {
 		let startDate;
 		let endDate;
 		if (this.state.userConfig.defaultView === defaultView.CALENDAR) {
-			startDate = this.state.currentMonth.getMonthStart();
-			endDate = this.state.currentMonth.getMonthEnd();
+			startDate = 
+				moment(this.state.currentMonth.getMonthStart())
+				.subtract(1, 'week')
+				.format(serverDateFormat);
+			endDate = 
+				moment(this.state.currentMonth.getMonthEnd())
+				.add(1, 'week')
+				.format(serverDateFormat);
 		} else { // Countdown mode
 			startDate = moment().format(serverDateFormat);
 			endDate = this.state.userConfig.countdownConfig.deadline;
@@ -579,7 +595,7 @@ class MainPanel extends React.Component {
 
 	// Database access methods -- Workouts
 	populateWorkouts() {
-		const displayDates = this.getCurrentDisplayStartEnd();
+		const displayDates = this.getCurrentDisplayedRange();
 
 		this.state.workoutHandler.pullWorkoutsFromDB(
 			displayDates.startDate,
@@ -623,7 +639,7 @@ class MainPanel extends React.Component {
 	// Database access methods -- Weekly Goals
 
 	populateWeeklyGoals() {
-		const displayDates = this.getCurrentDisplayStartEnd();
+		const displayDates = this.getCurrentDisplayedRange();
 
 		axios.get(dbAddress + "getweeklygoalsforownerfordaterange/"
 			+ this.state.userID + "/"
@@ -763,7 +779,7 @@ class MainPanel extends React.Component {
 		};
 
 		// // short circuit for testing. remember to remove
-		return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
+		// return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
 
 		const currentMonth = this.state.currentMonth;
 		const alternateDisplayMode =

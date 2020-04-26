@@ -26,7 +26,7 @@ let User = new Schema({
         autofillConfig: {
             distribution: {
                 type: String,
-                enum: ["even", "random", "pyramid", "staircaseUp", "staircaseDown"]
+                enum: ["Even", "Random", "Pyramid", "StaircaseUp", "StaircaseDown"]
             }
         },
         countdownConfig: { 

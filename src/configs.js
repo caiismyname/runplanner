@@ -36,7 +36,7 @@ export const creationTypes = {
 };
 
 export const autofillDistributions = {
-    EVEN: "Even",
+    EVEN: 'Even',
     // RANDOM: "random",
     // PYRAMID: "pyramid",
     // STAIRCASEUP: "staircaseUp",
@@ -100,4 +100,12 @@ export const grommetTheme = {
 
 export const toSentenceCase = (word) => {
     return (word[0].toUpperCase() + word.slice(1).toLowerCase());
+};
+
+export const getNumberOfDaysInMonth = (month, year) => {
+    // Moment months are 0 indexed (0 is January), but JS Date Months are 1 indexed
+    // so we need a + 1 on the month to convert
+
+    // Source: https://www.geeksforgeeks.org/how-to-get-the-number-of-days-in-a-specified-month-using-javascript/
+    return (new Date(year, month + 1, 0).getDate());
 };

@@ -11,7 +11,7 @@ const creationTypes = {
 };
 
 const autofillDistributions = {
-	EVEN: "Even",
+	EVEN: 'Even',
 	// RANDOM: "random",
 	// PYRAMID: "pyramid",
 	// STAIRCASEUP: "staircaseUp",

@@ -10,7 +10,9 @@ import {
 	payloadWithIDPropType, 
 	weeklyGoalPayloadPropType,
 	creationTypes,
-	goalControlColor } from './configs';
+	goalControlColor,
+	getNumberOfDaysInMonth,
+} from './configs';
 import './App.css';
 
 var moment = require('moment-timezone');
@@ -43,6 +45,58 @@ class Calendar extends React.Component {
 		autofillWeeklyGoalHandler: PropTypes.func,
 	};
 
+	getPayloadsForDate(date) {
+		return (typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : null);
+	}
+
+	// fillDayArray populates the month, but we want to the show the
+	// days on the edge (beginning and end) of the abutting months as well.
+	generateEdgeDays(firstDisplayedDay, fullArrayLength) {
+		const numDaysAtBeginning = firstDisplayedDay;
+		const numDaysAtEnd = fullArrayLength - numDaysAtBeginning - this.props.currentMonth.totalDays;
+
+		const prevMonthCursor = moment(this.props.currentMonth.month).subtract(1, 'month');
+		prevMonthCursor.date(
+			getNumberOfDaysInMonth(prevMonthCursor.month(), prevMonthCursor.year()) - numDaysAtBeginning + 1
+		);
+		const nextMonthCursor = 
+			moment(this.props.currentMonth.month)
+			.add(1, 'month')
+			.date(1);
+
+		const prevMonthDayCells = [];
+		const nextMonthDayCells = [];
+
+		for (let i = 0; i < numDaysAtBeginning; i++) {
+			const date = prevMonthCursor.format(serverDateFormat);
+			const payloads = this.getPayloadsForDate(date);
+
+			prevMonthDayCells.push({
+				date: date,
+				payloads: payloads,
+			});
+
+			prevMonthCursor.add(1, 'day');
+		}
+
+		for (let j = 0; j < numDaysAtEnd; j++) {
+			const date = nextMonthCursor.format(serverDateFormat);
+			const payloads = this.getPayloadsForDate(date);
+
+			nextMonthDayCells.push({
+				date: date,
+				payloads: payloads,
+			});
+
+			nextMonthCursor.add(1, 'day');
+		}
+
+		return({
+			prevMonthDayCells: prevMonthDayCells,
+			nextMonthDayCells: nextMonthDayCells,
+		});
+	}
+
 	fillDayArray() {
 		let firstDisplayedDay;
 		let totalDisplayedDays;
@@ -73,13 +127,13 @@ class Calendar extends React.Component {
 
 		fullArrayLength = firstDisplayedDay + totalDisplayedDays; // Account for padding in the beginning
 		fullArrayLength = fullArrayLength + (fullArrayLength % 7 === 0 ? 0 : 7 - fullArrayLength % 7); // Pad extra days at the end
-		let dayArray = Array(fullArrayLength).fill({});
+		let dayArray = [];
 
 		const currentDay = moment(month); // Prefill with given month since calendar doesn't necessarily reflect the current month.
 
 		for (let i = firstDisplayedDay; i < firstDisplayedDay + totalDisplayedDays; i++) {
 			const date = currentDay.format(serverDateFormat);
-			const payloads = typeof this.props.workouts[date] !== 'undefined' ? this.props.workouts[date] : null;
+			const payloads = this.getPayloadsForDate(date);
 			dayArray.splice(i, 1, {
 				date: date,
 				payloads: payloads,
@@ -87,6 +141,9 @@ class Calendar extends React.Component {
 
 			currentDay.add(1, "day");
 		}
+
+		const edges = this.generateEdgeDays(firstDisplayedDay, fullArrayLength);
+		dayArray = (edges.prevMonthDayCells.concat(dayArray)).concat(edges.nextMonthDayCells);
 
 		return dayArray;
 	}
@@ -155,6 +212,7 @@ class Calendar extends React.Component {
 					sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
 					autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
 					key={index}
+					mainMonth={this.props.currentMonth.month}
 				/>
 			);
 		});
@@ -227,6 +285,7 @@ class WeekDisplay extends React.Component {
 		goal: weeklyGoalPayloadPropType.isRequired,
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
+		mainMonth: PropTypes.string,
 	};
 
 	computeWeekTotalmileage() {
@@ -292,6 +351,7 @@ class WeekDisplay extends React.Component {
 					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
 					isThisWeek={this.isThisWeek()}
 					key={index}
+					mainMonth={this.props.mainMonth}
 				/>
 			);
 		}));
@@ -418,7 +478,8 @@ class DayCell extends React.Component {
 		addNewWorkoutHandler: PropTypes.func.isRequired,
 		date: PropTypes.string.isRequired,
 		payloads: PropTypes.arrayOf(payloadWithIDPropType).isRequired,
-		isThisWeek: PropTypes.bool.isRequired
+		isThisWeek: PropTypes.bool.isRequired,
+		mainMonth: PropTypes.string.isRequired,
 	};
 
 	constructor(props) {
@@ -441,6 +502,10 @@ class DayCell extends React.Component {
 			return (false);
 		}
 		return (moment().isSame(this.props.date, 'day'));
+	}
+
+	isMainMonth() {
+		return (moment(this.props.date).isSame(this.props.mainMonth, 'month'));
 	}
 
 	render() {
@@ -469,7 +534,9 @@ class DayCell extends React.Component {
 		if (this.isToday()) {
 			background = 'accent-4';
 		} else if (this.props.isThisWeek) {
-			background = 'accent-3'
+			background = 'accent-3';
+		} else if (!this.isMainMonth()) {
+			background = 'black';
 		}
 
 		return (
