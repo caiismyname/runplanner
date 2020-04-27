@@ -2,8 +2,15 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, Heading, TextInput, TextArea, FormField, RadioButtonGroup } from 'grommet';
 import { Save } from 'grommet-icons';
-import { workoutFields, timeFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes } from './configs';
+import { workoutFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes } from './configs';
 import TimeEntry from './TimeEntryModule';
+import Loader from 'react-loader-spinner'
+
+import { 
+	brandColor,
+	statusCriticalColor,
+	loaderTimeout,
+} from './configs';
 
 var moment = require('moment-timezone');
 
@@ -25,6 +32,7 @@ class EditWorkoutModule extends React.Component {
 
 		this.state = {
 			edited: false,
+			isDeleting: false,
 		}
 	}
 
@@ -43,14 +51,32 @@ class EditWorkoutModule extends React.Component {
 	}
 
 	handleDelete() {
-		this.props.deleteWorkoutFunc(this.props.id);
-		this.props.onClose();
+		this.setState({isDeleting: true});
+		this.props.deleteWorkoutFunc(this.props.id, (isSuccess) => {
+			this.setState({isDeleting: false});
+			if (isSuccess) {
+				this.props.onClose();
+			} else {
+				alert("Error deleting the run");
+			}
+		});
 	}
 
 	render() {
 		if (!this.props.show) {
 			return (null);
 		};
+
+		const deleteButton = 
+			this.state.isDeleting
+			? 				
+				<Loader
+					type='ThreeDots'
+					color={statusCriticalColor}
+					height='100%'
+					timeout={loaderTimeout}
+				/>
+			: <Button onClick={this.handleDelete} label='Delete' secondary color='status-critical'/>;
 
 		return (
 			<Box pad='small'>
@@ -111,6 +137,7 @@ class EditWorkoutModule extends React.Component {
 				<br/>
 				<Box>
 					<RadioButtonGroup
+						name='workout type selector'
 						options={[...Object.values(workoutTypes)]}
 						value={this.props.payload.type}
 						onChange={(e) => {
@@ -124,7 +151,7 @@ class EditWorkoutModule extends React.Component {
 				<Box
 					alignSelf='start'
 				>
-					<Button onClick={this.handleDelete} label='Delete' secondary color='status-critical'/>
+					{deleteButton}
 				</Box>
 			</Box>
 		);

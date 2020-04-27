@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Button, Heading, Meter, TextInput} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
+import Loader from 'react-loader-spinner';
 import { 
 	defaultView, 
 	serverDateFormat, 
@@ -12,6 +13,8 @@ import {
 	creationTypes,
 	goalControlColor,
 	getNumberOfDaysInMonth,
+	brandColor,
+	loaderTimeout,
 } from './configs';
 import './App.css';
 
@@ -207,10 +210,10 @@ class Calendar extends React.Component {
 			return (
 				<WeekDisplay
 					days={days}
-					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+					addNewWorkoutHandler={(date, id, callback) => this.props.addNewWorkoutHandler(date, id, callback)}
 					goal={thisWeekGoal}
 					sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
-					autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
+					autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
 					key={index}
 					mainMonth={this.props.currentMonth.month}
 				/>
@@ -324,7 +327,7 @@ class WeekDisplay extends React.Component {
 				goal={this.props.goal}
 				totalmileage={this.computeWeekTotalmileage()}
 				sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
-				autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
+				autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
 			/>
 		);
 		dayCells.push(...days.map((value, index) => {
@@ -348,7 +351,7 @@ class WeekDisplay extends React.Component {
 						? value.payloads 
 						: [{ payload: { 'content': '', 'type': '', 'date': '', mileage: {goal: 0} }, id: '' }]}
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
-					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+					addNewWorkoutHandler={(date, id, callback) => this.props.addNewWorkoutHandler(date, id, callback)}
 					isThisWeek={this.isThisWeek()}
 					key={index}
 					mainMonth={this.props.mainMonth}
@@ -377,7 +380,12 @@ class WeekGoalControl extends React.Component {
 
 		this.state = {
 			showEditGoal: false,
-		}
+			loadingState: false,
+		};
+	}
+
+	doesGoalExist() {
+		return ('goalID' in this.props.goal);
 	}
 
 	handleGoalChange(newValue) {
@@ -387,6 +395,31 @@ class WeekGoalControl extends React.Component {
 	}
 
 	render() {
+		const autofillButton = 
+			<Box 
+				alignSelf='end' 
+				margin={{top: 'auto'}}
+			>
+				<Button 
+					onClick={(event) => {
+						// This stops the container div from registering a click when the button is clicked
+						if (event.stopPropagation) {
+							event.stopPropagation();
+						}
+						this.setState({loadingState: true});
+						this.props.autofillWeeklyGoalHandler(this.props.goal.goalID, (success) => {
+							if (success) {
+								this.setState({loadingState: false});
+							}
+						})
+						
+					}}
+					icon={<Share size='small'/>}
+					primary
+					color={goalControlColor}
+				/>
+			</Box>;
+
 		const goalDisplay = 
 			<Box
 				width='100%'
@@ -425,20 +458,7 @@ class WeekGoalControl extends React.Component {
 					</h2>
 				</div>
 				
-				<Box alignSelf='end' margin={{top: 'auto'}}>
-					<Button 
-						onClick={(event) => {
-							// This stops the container div from registering a click when the button is clicked
-							if (event.stopPropagation) {
-								event.stopPropagation();
-							}
-							this.props.autofillWeeklyGoalHandler(this.props.goal.goalID)
-						}}
-						icon={<Share size='small'/>}
-						primary
-						color={goalControlColor}
-					/>
-				</Box>
+				{this.doesGoalExist() ? autofillButton : null}
 			</Box>;
 		
 		const editDisplay = 
@@ -452,9 +472,9 @@ class WeekGoalControl extends React.Component {
 			>
 				<TextInput
 					placeholder='Week mileage Goal'
-					value={this.props.goal.payload.goalValue}
+					value={this.doesGoalExist() ? this.props.goal.payload.goalValue: ''}
 					onChange={(e) => {
-						this.handleGoalChange(Number(e.target.value))
+						this.handleGoalChange(Number(e.target.value));
 					}}
 				/>
 				<Button
@@ -464,8 +484,26 @@ class WeekGoalControl extends React.Component {
 					label='Close'
 				/>
 			</Box>
-	
-		if (this.state.showEditGoal) {
+
+		const loader = 
+			<Box
+				width='100%'
+				border={true}
+				pad='xsmall'
+				justify='center'
+				align='center'
+				background='light-2'
+			>
+				<Loader
+					type="BallTriangle"
+					color={brandColor}
+					timeout={loaderTimeout}
+				 />
+			</Box>;
+		
+		if (this.state.loadingState) {
+			return (loader);
+		} else if (this.state.showEditGoal) {
 			return (editDisplay);
 		} else {
 			return (goalDisplay);
@@ -487,6 +525,7 @@ class DayCell extends React.Component {
 
 		this.state = {
 			showAddButton: false,
+			loadingState: false,
 		};
 	}
 
@@ -539,6 +578,32 @@ class DayCell extends React.Component {
 			background = 'black';
 		}
 
+		const addButton = 
+			// margin.top = auto is so the button sticks to the bottom
+			<Box alignSelf='start' margin={{top: 'auto'}}>
+				{this.state.loadingState
+				? 
+					<Loader
+						type="ThreeDots"
+						color={brandColor}
+						timeout={loaderTimeout}
+						height="100%"
+					/>
+				:
+					<Button
+						onClick={() => {
+							this.setState({loadingState: true});
+							this.props.addNewWorkoutHandler(this.props.date, "", (isSuccess) => {
+								this.setState({loadingState: false});
+							});
+						}}
+						primary
+						color='brand'
+						icon={<Add size='small'/>}
+					/>
+				}
+			</Box>;
+
 		return (
 			<Box
 				border={true}
@@ -560,21 +625,7 @@ class DayCell extends React.Component {
 					{this.generateDisplayDate()}
 				</Heading>
 				{content}
-				{
-					this.state.showAddButton 
-					? 
-						// margin.top = auto is so the button sticks to the bottom
-						<Box alignSelf='start' margin={{top: 'auto'}}>
-							<Button
-								onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
-								primary
-								color='brand'
-								icon={<Add size='small'/>}
-							/>
-						</Box>
-					: null
-				}
-				
+				{ (this.state.showAddButton || this.state.loadingState) ? addButton : null}
 			</Box>
 		);
 	}
