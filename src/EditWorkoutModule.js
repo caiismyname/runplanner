@@ -136,6 +136,7 @@ class EditWorkoutModule extends React.Component {
 				<br/>
 				<Box>
 					<RadioButtonGroup
+						name='workout type selector'
 						options={[...Object.values(workoutTypes)]}
 						value={this.props.payload.type}
 						onChange={(e) => {

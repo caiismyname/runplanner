@@ -472,9 +472,9 @@ class WeekGoalControl extends React.Component {
 			>
 				<TextInput
 					placeholder='Week mileage Goal'
-					value={this.props.goal.payload.goalValue}
+					value={this.doesGoalExist() ? this.props.goal.payload.goalValue: ''}
 					onChange={(e) => {
-						this.handleGoalChange(Number(e.target.value))
+						this.handleGoalChange(Number(e.target.value));
 					}}
 				/>
 				<Button
