@@ -8,6 +8,7 @@ import Loader from 'react-loader-spinner'
 
 import { 
 	brandColor,
+	statusCriticalColor,
 	loaderTimeout,
 } from './configs';
 
@@ -70,8 +71,8 @@ class EditWorkoutModule extends React.Component {
 			this.state.isDeleting
 			? 				
 				<Loader
-					type="ThreeDots"
-					color='status-critical'
+					type='ThreeDots'
+					color={statusCriticalColor}
 					height='100%'
 					timeout={loaderTimeout}
 				/>

@@ -112,3 +112,4 @@ export const getNumberOfDaysInMonth = (month, year) => {
 };
 
 export const loaderTimeout = 3000;
+export const statusCriticalColor = '#FF4040';
