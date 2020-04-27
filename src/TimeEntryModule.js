@@ -55,6 +55,7 @@ class TimeEntry extends React.Component {
 				gap='xxsmall'
 				align='center'
 			>
+				{/* Hour */}
 				<div style={{width: '25%', fontSize: '3em'}}>
 					<TextInput
 						style={{textAlign: 'center'}}
@@ -74,6 +75,7 @@ class TimeEntry extends React.Component {
 						}}
 					/>
 				</div>
+				{/* Minute */}
 				<div style={{width: '25%', fontSize: '3em'}}>
 					<TextInput
 					    style={{textAlign: 'center'}}
@@ -83,8 +85,8 @@ class TimeEntry extends React.Component {
 							if (Number(value) > 59) {
 								return;
 							}
-
-							if (value === "" || value === "0") {
+							
+							if (value === "") {
 								this.setState({ blankMinute: true, minuteDisplayMode: "m" });
 							} else {
 								this.setState({ blankMinute: false, minuteDisplayMode: "m" });
