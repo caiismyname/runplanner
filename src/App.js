@@ -547,7 +547,7 @@ class MainPanel extends React.Component {
 		return ({ startDate: startDate, endDate: endDate });
 	}
 
-	toggleEditWorkoutModule(date = "", id = "") {
+	toggleEditWorkoutModule(date = "", id = "", callback) {
 		let newState = {
 			showingEditWorkoutModule: !this.state.editWorkoutModuleConfig.showingEditWorkoutModule
 		};
@@ -557,7 +557,7 @@ class MainPanel extends React.Component {
 			// If no ID, we're creating a new workout.
 			// Trigger the creation first on DB first, then populate the module with the resulting (empty) payload.
 			if (id === "") {
-				this.createNewWorkout(date);
+				this.createNewWorkout(date, callback);
 				// Don't update EWMC state to show the module yet -- wait for object to be created in DB and FE to update.
 				// The createNewWorkout function will set E to show.
 			} else {
@@ -617,7 +617,7 @@ class MainPanel extends React.Component {
 
 	// Creates one new workout. There are some indexing assumptions built on the fact that only 
 	// one workout is created.
-	createNewWorkout(date) {
+	createNewWorkout(date, callbackk) {
 		this.state.workoutHandler.addEmptyWorkout(date, (displayWorkouts, newWorkoutIDs) => {
 			const newState = { workouts: displayWorkouts };
 			// Clicking the "add workout" button won't trigger the opening of the AWM.
@@ -626,13 +626,26 @@ class MainPanel extends React.Component {
 			newState.editWorkoutModuleConfig.workoutID = newWorkoutIDs[0];
 			newState.editWorkoutModuleConfig.showingEditWorkoutModule = true;
 			this.setState(newState);
+			callbackk(true);
 		});
 	}
 
-	deleteWorkouts(workoutIDs) {
+	deleteWorkouts(workoutIDs, callback) {
 		this.state.workoutHandler.deleteWorkouts(
 			workoutIDs,
-			(newDisplayWorkouts) => { this.setState({ workouts: newDisplayWorkouts }) }
+			(newDisplayWorkouts) => { 
+				this.setState(
+					{ 
+						workouts: newDisplayWorkouts,
+						editWorkoutModuleConfig: {
+							showingEditWorkoutModule: false,
+							workoutID: "",
+							workoutDate: "",
+						},
+					}, 
+					callback(true)
+				);
+			}
 		);
 	}
 
@@ -783,10 +796,10 @@ class MainPanel extends React.Component {
 		// return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
 
 		const currentMonth = this.state.currentMonth;
-		const alternateDisplayMode =
-			this.state.defaultView === defaultView.CALENDAR
-				? defaultView.COUNTDOWN
-				: defaultView.CALENDAR;
+		// const alternateDisplayMode =
+		// 	this.state.defaultView === defaultView.CALENDAR
+		// 		? defaultView.COUNTDOWN
+		// 		: defaultView.CALENDAR;
 		const editWorkoutModuleConfig = this.state.editWorkoutModuleConfig;
 
 		let editWorkoutModulePayload;
@@ -832,7 +845,7 @@ class MainPanel extends React.Component {
 					currentMonth={currentMonth.getMonthInfo()}
 					decrementMonthHandler={() => this.decrementMonth()}
 					incrementMonthHandler={() => this.incrementMonth()}
-					addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
+					addNewWorkoutHandler={(date, id, callback) => this.toggleEditWorkoutModule(date, id, callback)}
 					workouts={this.state.workouts}
 					sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
 					autofillWeeklyGoalHandler={(goalID, callback) => this.autofillWeeklyGoal(goalID, callback)}
@@ -850,7 +863,7 @@ class MainPanel extends React.Component {
 						show={editWorkoutModuleConfig.showingEditWorkoutModule}
 						onClose={() => this.toggleEditWorkoutModule("", "")}
 						updateDayContentFunc={(workoutID, content) => this.updateDayContent(workoutID, content)}
-						deleteWorkoutFunc={(workoutID) => this.deleteWorkouts([workoutID])}
+						deleteWorkoutFunc={(workoutID, callback) => this.deleteWorkouts([workoutID], callback)}
 						payload={editWorkoutModulePayload}
 						id={editWorkoutModuleConfig.workoutID}
 						saveFunc={() => this.updateDB()}

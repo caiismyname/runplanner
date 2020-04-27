@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Button, Heading, Meter, TextInput} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
-import Loader from 'react-loader-spinner'
+import Loader from 'react-loader-spinner';
 import { 
 	defaultView, 
 	serverDateFormat, 
@@ -210,7 +210,7 @@ class Calendar extends React.Component {
 			return (
 				<WeekDisplay
 					days={days}
-					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+					addNewWorkoutHandler={(date, id, callback) => this.props.addNewWorkoutHandler(date, id, callback)}
 					goal={thisWeekGoal}
 					sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
 					autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
@@ -351,7 +351,7 @@ class WeekDisplay extends React.Component {
 						? value.payloads 
 						: [{ payload: { 'content': '', 'type': '', 'date': '', mileage: {goal: 0} }, id: '' }]}
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
-					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
+					addNewWorkoutHandler={(date, id, callback) => this.props.addNewWorkoutHandler(date, id, callback)}
 					isThisWeek={this.isThisWeek()}
 					key={index}
 					mainMonth={this.props.mainMonth}
@@ -529,14 +529,6 @@ class DayCell extends React.Component {
 		};
 	}
 
-	componentDidUpdate(prevProps, prevState, snapshot) {
-		// Assumption: upon update to a DayCell, we're assuming that whatever we
-		// were waiting on to be loaded will have completed (which is why there is an update)
-		if (prevState.loadingState) {
-			this.setState({loadingState: false});
-		}
-	}
-
 	generateDisplayDate() {
 		if (this.props.date === "") {
 			return (null);
@@ -594,14 +586,16 @@ class DayCell extends React.Component {
 					<Loader
 						type="ThreeDots"
 						color={brandColor}
-						timeout={3000} //3 secs
+						timeout={loaderTimeout}
 						height="100%"
 					/>
 				:
 					<Button
 						onClick={() => {
 							this.setState({loadingState: true});
-							this.props.addNewWorkoutHandler(this.props.date, "");
+							this.props.addNewWorkoutHandler(this.props.date, "", (isSuccess) => {
+								this.setState({loadingState: false});
+							});
 						}}
 						primary
 						color='brand'
@@ -631,7 +625,7 @@ class DayCell extends React.Component {
 					{this.generateDisplayDate()}
 				</Heading>
 				{content}
-				{ this.state.showAddButton ? addButton : null}
+				{ (this.state.showAddButton || this.state.loadingState) ? addButton : null}
 			</Box>
 		);
 	}
