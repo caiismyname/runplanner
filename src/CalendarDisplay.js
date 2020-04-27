@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Button, Heading, Meter, TextInput} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
+import Loader from 'react-loader-spinner'
 import { 
 	defaultView, 
 	serverDateFormat, 
@@ -12,6 +13,7 @@ import {
 	creationTypes,
 	goalControlColor,
 	getNumberOfDaysInMonth,
+	brandColor,
 } from './configs';
 import './App.css';
 
@@ -210,7 +212,7 @@ class Calendar extends React.Component {
 					addNewWorkoutHandler={(date, id) => this.props.addNewWorkoutHandler(date, id)}
 					goal={thisWeekGoal}
 					sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
-					autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
+					autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
 					key={index}
 					mainMonth={this.props.currentMonth.month}
 				/>
@@ -324,7 +326,7 @@ class WeekDisplay extends React.Component {
 				goal={this.props.goal}
 				totalmileage={this.computeWeekTotalmileage()}
 				sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
-				autofillWeeklyGoalHandler={goalID => this.props.autofillWeeklyGoalHandler(goalID)}
+				autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
 			/>
 		);
 		dayCells.push(...days.map((value, index) => {
@@ -377,7 +379,12 @@ class WeekGoalControl extends React.Component {
 
 		this.state = {
 			showEditGoal: false,
-		}
+			loadingState: false,
+		};
+	}
+
+	doesGoalExist() {
+		return ('goalID' in this.props.goal);
 	}
 
 	handleGoalChange(newValue) {
@@ -387,6 +394,28 @@ class WeekGoalControl extends React.Component {
 	}
 
 	render() {
+		const autofillButton = 
+			<Box alignSelf='end' margin={{top: 'auto'}}>
+				<Button 
+					onClick={(event) => {
+						// This stops the container div from registering a click when the button is clicked
+						if (event.stopPropagation) {
+							event.stopPropagation();
+						}
+						this.setState({loadingState: true});
+						this.props.autofillWeeklyGoalHandler(this.props.goal.goalID, (success) => {
+							if (success) {
+								this.setState({loadingState: false});
+							}
+						})
+						
+					}}
+					icon={<Share size='small'/>}
+					primary
+					color={goalControlColor}
+				/>
+			</Box>;
+
 		const goalDisplay = 
 			<Box
 				width='100%'
@@ -425,20 +454,7 @@ class WeekGoalControl extends React.Component {
 					</h2>
 				</div>
 				
-				<Box alignSelf='end' margin={{top: 'auto'}}>
-					<Button 
-						onClick={(event) => {
-							// This stops the container div from registering a click when the button is clicked
-							if (event.stopPropagation) {
-								event.stopPropagation();
-							}
-							this.props.autofillWeeklyGoalHandler(this.props.goal.goalID)
-						}}
-						icon={<Share size='small'/>}
-						primary
-						color={goalControlColor}
-					/>
-				</Box>
+				{this.doesGoalExist() ? autofillButton : null}
 			</Box>;
 		
 		const editDisplay = 
@@ -464,8 +480,26 @@ class WeekGoalControl extends React.Component {
 					label='Close'
 				/>
 			</Box>
-	
-		if (this.state.showEditGoal) {
+
+		const loader = 
+			<Box
+				width='100%'
+				border={true}
+				pad='xsmall'
+				justify='center'
+				align='center'
+				background='light-2'
+			>
+				<Loader
+					type="BallTriangle"
+					color={brandColor}
+					timeout={3000} //3 secs
+				 />
+			</Box>;
+		
+		if (this.state.loadingState) {
+			return (loader);
+		} else if (this.state.showEditGoal) {
 			return (editDisplay);
 		} else {
 			return (goalDisplay);

@@ -734,7 +734,7 @@ class MainPanel extends React.Component {
 		};
 	}
 
-	autofillWeeklyGoal(goalID) {
+	autofillWeeklyGoal(goalID, callback) {
 		axios.post(dbAddress + "autofillweek", { userID: this.state.userID, goalID: goalID })
 			.then(res => {
 				// res.data.added.forEach(workout => {
@@ -747,6 +747,7 @@ class MainPanel extends React.Component {
 				// });
 
 				this.populateWorkouts();
+				callback(true);
 			})
 	}
 
@@ -834,7 +835,7 @@ class MainPanel extends React.Component {
 					addNewWorkoutHandler={(date, id) => this.toggleEditWorkoutModule(date, id)}
 					workouts={this.state.workouts}
 					sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
-					autofillWeeklyGoalHandler={(goalID) => this.autofillWeeklyGoal(goalID)}
+					autofillWeeklyGoalHandler={(goalID, callback) => this.autofillWeeklyGoal(goalID, callback)}
 					weeklyGoals={this.state.weeklyGoals}
 					deadline={this.state.userConfig.countdownConfig.deadline}
 					defaultView={this.state.userConfig.defaultView}

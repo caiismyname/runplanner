@@ -80,6 +80,7 @@ export const autofillTypes = {
 };
 
 export const goalControlColor = 'neutral-3';
+export const brandColor = '#d99c18';
 
 export const grommetTheme = {
     global: {
@@ -89,7 +90,7 @@ export const grommetTheme = {
             height: '20px',
         },
         colors: {
-            brand: '#d99c18',
+            brand: brandColor,
             focus: 'neutral-4',
         },
         meter: {
