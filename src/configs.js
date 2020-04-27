@@ -110,3 +110,5 @@ export const getNumberOfDaysInMonth = (month, year) => {
     // Source: https://www.geeksforgeeks.org/how-to-get-the-number-of-days-in-a-specified-month-using-javascript/
     return (new Date(year, month + 1, 0).getDate());
 };
+
+export const loaderTimeout = 3000;

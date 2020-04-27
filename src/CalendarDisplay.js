@@ -14,6 +14,7 @@ import {
 	goalControlColor,
 	getNumberOfDaysInMonth,
 	brandColor,
+	loaderTimeout,
 } from './configs';
 import './App.css';
 
@@ -395,7 +396,10 @@ class WeekGoalControl extends React.Component {
 
 	render() {
 		const autofillButton = 
-			<Box alignSelf='end' margin={{top: 'auto'}}>
+			<Box 
+				alignSelf='end' 
+				margin={{top: 'auto'}}
+			>
 				<Button 
 					onClick={(event) => {
 						// This stops the container div from registering a click when the button is clicked
@@ -493,7 +497,7 @@ class WeekGoalControl extends React.Component {
 				<Loader
 					type="BallTriangle"
 					color={brandColor}
-					timeout={3000} //3 secs
+					timeout={loaderTimeout}
 				 />
 			</Box>;
 		
@@ -521,7 +525,16 @@ class DayCell extends React.Component {
 
 		this.state = {
 			showAddButton: false,
+			loadingState: false,
 		};
+	}
+
+	componentDidUpdate(prevProps, prevState, snapshot) {
+		// Assumption: upon update to a DayCell, we're assuming that whatever we
+		// were waiting on to be loaded will have completed (which is why there is an update)
+		if (prevState.loadingState) {
+			this.setState({loadingState: false});
+		}
 	}
 
 	generateDisplayDate() {
@@ -573,6 +586,30 @@ class DayCell extends React.Component {
 			background = 'black';
 		}
 
+		const addButton = 
+			// margin.top = auto is so the button sticks to the bottom
+			<Box alignSelf='start' margin={{top: 'auto'}}>
+				{this.state.loadingState
+				? 
+					<Loader
+						type="ThreeDots"
+						color={brandColor}
+						timeout={3000} //3 secs
+						height="100%"
+					/>
+				:
+					<Button
+						onClick={() => {
+							this.setState({loadingState: true});
+							this.props.addNewWorkoutHandler(this.props.date, "");
+						}}
+						primary
+						color='brand'
+						icon={<Add size='small'/>}
+					/>
+				}
+			</Box>;
+
 		return (
 			<Box
 				border={true}
@@ -594,21 +631,7 @@ class DayCell extends React.Component {
 					{this.generateDisplayDate()}
 				</Heading>
 				{content}
-				{
-					this.state.showAddButton 
-					? 
-						// margin.top = auto is so the button sticks to the bottom
-						<Box alignSelf='start' margin={{top: 'auto'}}>
-							<Button
-								onClick={() => this.props.addNewWorkoutHandler(this.props.date, "")}
-								primary
-								color='brand'
-								icon={<Add size='small'/>}
-							/>
-						</Box>
-					: null
-				}
-				
+				{ this.state.showAddButton ? addButton : null}
 			</Box>
 		);
 	}
