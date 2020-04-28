@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+var moment = require('moment-timezone');
 
 export const dbAddress = "http://localhost:4000/runplannerDB/";
 export const serverDateFormat = "YYYY-MM-DD";
@@ -113,3 +114,17 @@ export const getNumberOfDaysInMonth = (month, year) => {
 
 export const loaderTimeout = 3000;
 export const statusCriticalColor = '#FF4040';
+
+export const defaultSettings = {
+    startingDayOfWeek: 1,
+    mainTimezone: moment.tz.guess(),
+    defaultStartTime: {
+        hour: 7,
+        minute: 0,
+    },
+    defaultRunDuration: 60,
+    autofillConfig: {
+        distribution: autofillDistributions.EVEN,      
+    },
+    defaultView: defaultView.CALENDAR,
+};

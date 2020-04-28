@@ -1,16 +1,36 @@
 import React from "react";
 import PropTypes from 'prop-types';
-import { Grommet, Main, Box, Tabs, Tab, Button, Heading, TextInput, Select, RadioButtonGroup, Paragraph} from 'grommet';
-import { Add, Subtract, Share } from 'grommet-icons';
-import { grommetTheme, defaultRunDurations, autofillDistributions, defaultView } from './configs';
+import { Grommet, Box, Tabs, Tab, Button, Heading, Select, RadioButtonGroup, Paragraph} from 'grommet';
+import { 
+    grommetTheme,
+    defaultRunDurations,
+    autofillDistributions,
+    defaultView,
+    defaultSettings,
+} from './configs';
 
 import TimeEntry from './TimeEntryModule';
 
 var moment = require('moment-timezone');
 
-class NewUserOnboarding extends React.Component {
+class SettingsModule extends React.Component {
     static propTypes = {
-        "onboardingHandler": PropTypes.func.isRequired,
+        titleText: PropTypes.string.isRequired,
+        subtitleText: PropTypes.string,
+        submitHandler: PropTypes.func.isRequired,
+        useDefaultSettings: PropTypes.bool.isRequired,
+        existingSettings: PropTypes.shape({
+            startingDayOfWeek: PropTypes.number,
+            mainTimezone: PropTypes.string,
+            defaultStartTime: PropTypes.shape({
+                hour: PropTypes.number,
+                minute: PropTypes.number,
+            }),
+            defaultRunDuration: PropTypes.number,
+            autofillConfig: PropTypes.shape({
+                autofillDistribution: PropTypes.string,
+            }),
+        }),
     };
 
     constructor(props) {
@@ -19,16 +39,12 @@ class NewUserOnboarding extends React.Component {
         this.updateStartTime = this.updateStartTime.bind(this);
         this.daysOfWeek = moment.weekdays();
 
-        // These are the defaults. They are important
-        this.state = {
-            startOfWeek: 1,
-            timezone: moment.tz.guess(),
-            startTime: {
-                hour: 7,
-                minute: 0,
-            },
-            runDuration: 3,
-            autofillDistribution: autofillDistributions.EVEN,
+        if (this.props.useDefaultSettings) {
+            this.state = defaultSettings;
+        } else {
+            this.state = {
+                ...this.props.existingSettings,
+            };
         }
     }
 
@@ -36,7 +52,7 @@ class NewUserOnboarding extends React.Component {
         // Technically this includes 'today's day, 
         // but it's never used since the hour/minute/period is parsed out
         // for separate storage.
-        return (moment().hour(this.state.startTime.hour).minute(this.state.startTime.minute).toISOString());
+        return (moment().hour(this.state.defaultStartTime.hour).minute(this.state.defaultStartTime.minute).toISOString());
     }
 
     updateStartTime(newTime) {
@@ -44,7 +60,7 @@ class NewUserOnboarding extends React.Component {
         const newMinute = moment(newTime).minute();
 
         this.setState({
-            startTime: {
+            defaultStartTime: {
                 hour: newHour,
                 minute: newMinute,
             }
@@ -64,17 +80,17 @@ class NewUserOnboarding extends React.Component {
                     width='66%'
                     overflow='scroll'
                 >
-                    <Heading level={1}>Welcome to RunPlanner</Heading>
-                    <Paragraph>Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later.</Paragraph>
+                    <Heading level={1}>{this.props.titleText}</Heading>
+                    <Paragraph>{this.props.subtitleText}</Paragraph>
 
                     <Box width='medium'>
                         <Heading level={5}>Timezone</Heading>
                         <Select
                             // options={['', 'US/Eastern', 'US/Central', 'US/Mountain', 'US/Pacific', 'US/Arizona', 'US/Alaska', 'US/Hawaii']}
                             options={moment.tz.zonesForCountry('US')}
-                            value={this.state.timezone}
+                            value={this.state.mainTimezone}
                             onChange={(res) => {
-                                this.setState({timezone: res.option});
+                                this.setState({mainTimezone: res.option});
                             }}
                         />
                     </Box>
@@ -83,8 +99,8 @@ class NewUserOnboarding extends React.Component {
                         <Heading level={5}>Start of Week</Heading>
                         <Tabs
                             alignSelf='start'
-                            activeIndex={this.state.startOfWeek}
-                            onActive={(index) => {this.setState({startOfWeek: index})}}
+                            activeIndex={this.state.startingDayOfWeek}
+                            onActive={(index) => {this.setState({startingDayOfWeek: index})}}
                         >
                             {this.daysOfWeek.map(day => <Tab title={day} key={day}/>)}
                         </Tabs>
@@ -102,8 +118,8 @@ class NewUserOnboarding extends React.Component {
                         <Heading level={5}>Default Run Duration (minutes)</Heading>
                         <Tabs
                             alignSelf='start'
-                            activeIndex={this.state.runDuration}
-                            onActive={(index) => {this.setState({runDuration: index})}}
+                            activeIndex={defaultRunDurations.indexOf(this.state.defaultRunDuration)}
+                            onActive={(index) => {this.setState({defaultRunDuration: defaultRunDurations[index]})}}
                         >
                             {defaultRunDurations.map(duration => <Tab title={String(duration)} key={duration}/>)}
                         </Tabs>
@@ -114,8 +130,8 @@ class NewUserOnboarding extends React.Component {
                         <RadioButtonGroup
                             name='autofill distribution selector'
                             options={[...Object.values(autofillDistributions)]}
-                            value={this.state.autofillDistribution}
-                            onChange={e => this.setState({autofillDistribution: e.target.value})}
+                            value={this.state.autofillConfig.distribution}
+                            onChange={e => this.setState({autofillConfig: {distribution: e.target.value}})}
                         />
                     </Box>
 
@@ -123,14 +139,7 @@ class NewUserOnboarding extends React.Component {
                         <Button 
                             label='Submit'
                             primary
-                            onClick={() => this.props.onboardingHandler(
-                                this.state.startOfWeek,
-                                defaultView.CALENDAR,
-                                this.state.timezone,
-                                defaultRunDurations[this.state.runDuration],
-                                this.state.startTime,
-                                this.state.autofillDistribution
-                            )}
+                            onClick={() => this.props.submitHandler(this.state)}
                         />
                     </Box>
                 </Box>
@@ -139,4 +148,4 @@ class NewUserOnboarding extends React.Component {
     }
 }
 
-export default NewUserOnboarding;
+export default SettingsModule;

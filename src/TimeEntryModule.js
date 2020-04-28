@@ -85,7 +85,6 @@ class TimeEntry extends React.Component {
 							if (Number(value) > 59) {
 								return;
 							}
-							
 							if (value === "") {
 								this.setState({ blankMinute: true, minuteDisplayMode: "m" });
 							} else {

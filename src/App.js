@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Grid, Grommet } from 'grommet';
+import { Box, Grid, Grommet, Layer } from 'grommet';
 import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
@@ -15,9 +15,10 @@ import {
 	grommetTheme, 
 	workoutTypes,
 	getNumberOfDaysInMonth,
+	autofillDistributions
 } from './configs';
 import LoginPage from "./LoginPage";
-import NewUserOnboarding from "./NewUserOnboarding";
+import SettingsModule from "./SettingsModule";
 import EditWorkoutModule from "./EditWorkoutModule";
 import Calendar from "./CalendarDisplay";
 import HeaderModule from './HeaderModule';
@@ -341,9 +342,11 @@ class MainPanel extends React.Component {
 
 		// This has to come before this.state is set. I don't know why.
 		this.toggleEditWorkoutModule = this.toggleEditWorkoutModule.bind(this);
+		this.toggleSettingsModule = this.toggleSettingsModule.bind(this);
 		this.signinHandler = this.signinHandler.bind(this);
 		this.authCodeHandler = this.authCodeHandler.bind(this);
 		this.onboardingHandler = this.onboardingHandler.bind(this);
+		this.updateUserSettingsHandler = this.updateUserSettingsHandler.bind(this);
 		this.updateDB = this.updateDB.bind(this);
 
 		this.state = {
@@ -357,6 +360,7 @@ class MainPanel extends React.Component {
 				workoutID: "",
 				workoutDate: "",
 			},
+			showSettingsModule: false,
 			currentMonth: new MonthHandler(),
 			workoutHandler: new WorkoutHandler(),
 			workouts: {},
@@ -376,6 +380,9 @@ class MainPanel extends React.Component {
 				defaultStartTime: { hour: 7, minute: 0 },
 				countdownConfig: {
 					deadline: moment().format(serverDateFormat)
+				},
+				autofillConfig: {
+					distribution: autofillDistributions.EVEN, // default value
 				},
 			},
 			weeklyGoals: {},
@@ -464,26 +471,14 @@ class MainPanel extends React.Component {
 		};
 	}
 
-	onboardingHandler(startingDayOfWeek, defaultView, mainTimezone, defaultRunDuration, defaultStartTime, autofillDistribution) {
-		this.initializeGCalCalendar(mainTimezone, (calendarID) => {
-			axios.post(dbAddress + "adduser",
+	onboardingHandler(newUserConfig) {
+		//  don't forget to add in countdownconfig when we're read
+		this.initializeGCalCalendar(newUserConfig.mainTimezone, (calendarID) => {
+			axios.post(dbAddress + 'adduser',
 				{
 					_id: this.state.userID,
 					calendarID: calendarID,
-					config: {
-						startingDayOfWeek: startingDayOfWeek,
-						defaultView: defaultView,
-						mainTimezone: mainTimezone,
-						defaultRunDuration: defaultRunDuration,
-						countdownConfig: {
-							deadline: null,
-						},
-						defaultStartTime: defaultStartTime,
-						autofillConfig: {
-							distribution: autofillDistribution,
-						},
-					},
-
+					config: newUserConfig,
 					gTokens: {
 						accessToken: '',
 						refreshToken: '',
@@ -506,6 +501,17 @@ class MainPanel extends React.Component {
 						);
 					});
 				});
+		});
+	}
+	
+	updateUserSettingsHandler(newUserConfig) {
+		axios.post(dbAddress + 'updateuser',
+			{
+				id: this.state.userID,
+				config: newUserConfig,
+			}
+		).then(res => {
+			this.populateUser();
 		});
 	}
 
@@ -568,6 +574,10 @@ class MainPanel extends React.Component {
 		} else {
 			this.setState({ editWorkoutModuleConfig: newState });
 		}
+	}
+
+	toggleSettingsModule() {
+		this.setState({showSettingsModule: !this.state.showSettingsModule});
 	}
 
 	//
@@ -789,11 +799,25 @@ class MainPanel extends React.Component {
 		if (!this.state.userExists) {
 			// User has now logged in via Google (userIsLoaded). 
 			// If they're not in our DB (userExists), then we need to perform our own onboarding.
-			return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
+			return (
+				<SettingsModule
+					useDefaultSettings={true}
+					titleText='Welcome to RunPlanner'
+					subtitleText="Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later."
+					submitHandler={this.onboardingHandler}
+				/>
+			);
 		};
 
 		// // short circuit for testing. remember to remove
-		// return (<NewUserOnboarding onboardingHandler={this.onboardingHandler} />);
+		// return (
+		// 	<SettingsModule
+		// 		useDefaultSettings={true}
+		// 		titleText='Welcome to RunPlanner'
+		// 		subtitleText="Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later."
+		// 		submitHandler={this.onboardingHandler}
+		// 	/>
+		// );
 
 		const currentMonth = this.state.currentMonth;
 		// const alternateDisplayMode =
@@ -838,8 +862,27 @@ class MainPanel extends React.Component {
 					},
 				]}
 			>
+				{	
+					this.state.showSettingsModule &&
+					<Layer
+						onEsc={() => this.toggleSettingsModule()}
+						onClickOutside={() => this.toggleSettingsModule()}
+					>
+						<Box
+							width='medium'
+						>
+							<SettingsModule
+								useDefaultSettings={false}
+								titleText='Settings'
+								submitHandler={this.updateUserSettingsHandler}
+								existingSettings={this.state.userConfig}
+							/>	
+						</Box>
+					</Layer>
+				}
 				<HeaderModule
 					name={this.state.name}
+					toggleSettingsPageFunc={this.toggleSettingsModule}
 				/>
 				<Calendar
 					currentMonth={currentMonth.getMonthInfo()}
@@ -850,7 +893,7 @@ class MainPanel extends React.Component {
 					sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
 					autofillWeeklyGoalHandler={(goalID, callback) => this.autofillWeeklyGoal(goalID, callback)}
 					weeklyGoals={this.state.weeklyGoals}
-					deadline={this.state.userConfig.countdownConfig.deadline}
+					// deadline={this.state.userConfig.countdownConfig.deadline}
 					defaultView={this.state.userConfig.defaultView}
 					startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
 					mainTimezone={this.state.userConfig.mainTimezone}
