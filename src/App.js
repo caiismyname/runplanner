@@ -65,6 +65,10 @@ class MonthHandler {
 	decrementMonth() {
 		return new MonthHandler(this.currentMonth.subtract(1, "month"));
 	}
+
+	resetToCurrentMonth() {
+		return new MonthHandler();
+	}
 }
 
 class WorkoutHandler {
@@ -528,6 +532,10 @@ class MainPanel extends React.Component {
 		this.setState({ currentMonth: this.state.currentMonth.incrementMonth() }, () => { this.populateWorkouts() });
 	}
 
+	resetToCurrentMonth() {
+		this.setState({ currentMonth: this.state.currentMonth.resetToCurrentMonth() }, () => { this.populateWorkouts() });
+	}
+
 	switchDisplayModes() {
 		this.setState({ defaultView: this.state.defaultView === defaultView.CALENDAR ? defaultView.COUNTDOWN : defaultView.CALENDAR });
 	}
@@ -903,6 +911,7 @@ class MainPanel extends React.Component {
 					currentMonth={currentMonth.getMonthInfo()}
 					decrementMonthHandler={() => this.decrementMonth()}
 					incrementMonthHandler={() => this.incrementMonth()}
+					resetToCurrentMonthHandler={() => this.resetToCurrentMonth()}
 					addNewWorkoutHandler={(date, id, callback) => this.toggleEditWorkoutModule(date, id, callback)}
 					workouts={this.state.workouts}
 					sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}

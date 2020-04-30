@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Heading, Meter, TextInput} from 'grommet';
+import { Box, Button, Heading, Meter, TextInput, Header} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
 import Loader from 'react-loader-spinner';
@@ -33,6 +33,7 @@ class Calendar extends React.Component {
 		}).isRequired,
 		decrementMonthHandler: PropTypes.func.isRequired,
 		incrementMonthHandler: PropTypes.func.isRequired,
+		resetToCurrentMonthHandler: PropTypes.func.isRequired,
 		addNewWorkoutHandler: PropTypes.func.isRequired,
 		workouts: PropTypes.objectOf(
 			PropTypes.arrayOf(payloadWithIDPropType)
@@ -228,6 +229,7 @@ class Calendar extends React.Component {
 							currentMonth={this.props.currentMonth}
 							decrementMonthHandler={() => this.props.decrementMonthHandler()}
 							incrementMonthHandler={() => this.props.incrementMonthHandler()}
+							resetToCurrentMonthHandler={() => this.props.resetToCurrentMonthHandler()}
 						/>
 						: null
 				}
@@ -254,6 +256,7 @@ class CalendarMonthControl extends React.Component {
 		}).isRequired,
 		decrementMonthHandler: PropTypes.func.isRequired,
 		incrementMonthHandler: PropTypes.func.isRequired,
+		resetToCurrentMonthHandler: PropTypes.func.isRequired,
 	};
 
 	render() {
@@ -263,13 +266,19 @@ class CalendarMonthControl extends React.Component {
 				align='center'
 				gap='xsmall'
 			>
-				<h1>{moment(this.props.currentMonth.month).format("MMMM YYYY")}</h1>
 				<Box>
 					<Button onClick={() => this.props.decrementMonthHandler()} primary icon={<Subtract size='small'/>}/>
 				</Box>
 				<Box>
 					<Button onClick={() => this.props.incrementMonthHandler()} primary icon={<Add size='small'/>}/>
 				</Box>
+				<Heading 
+					level={3}
+					onClick={() => this.props.resetToCurrentMonthHandler()}
+					style={{cursor: 'grab'}}
+				>
+					{moment(this.props.currentMonth.month).format("MMMM YYYY")}
+				</Heading>
 				
 			</Box>
 		);
