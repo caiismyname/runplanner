@@ -21,12 +21,10 @@ class HeaderModule extends React.Component {
                 <Heading level={1} margin='none'>
                     {appName}
                 </Heading>
-                <Box direction='row'>
-                    {/* <Button icon={<Services />} background='black' /> */}
+                <Box direction='row' gap='small'>
                     <Services 
                         style={{cursor: 'grab'}}
                         onClick={() => this.props.toggleSettingsPageFunc()}
-                        pad={{right: 'small'}}
                     />
                     <Heading level={3} margin='none'>
                         {this.props.name}
