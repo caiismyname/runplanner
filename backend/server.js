@@ -109,7 +109,6 @@ runplannerRoutes.route("/inituserserverauth").post(function (req, res) {
     http.send(JSON.stringify(params));
 
     http.onreadystatechange = (e) => {
-        console.log(http.readyState);
         if (http.readyState === 4) { // status 4 = request is finished and response is ready
             const response = JSON.parse(http.responseText); // response is undefined, but responseText is defined, for some reason
             const accessToken = response.access_token;

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Grid, Grommet, Layer } from 'grommet';
+import { Box, Grid, Grommet, Layer, Button } from 'grommet';
+import { Close } from 'grommet-icons';
 import './App.css';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import axios from 'axios';
@@ -800,23 +801,35 @@ class MainPanel extends React.Component {
 			// User has now logged in via Google (userIsLoaded). 
 			// If they're not in our DB (userExists), then we need to perform our own onboarding.
 			return (
-				<SettingsModule
-					useDefaultSettings={true}
-					titleText='Welcome to RunPlanner'
-					subtitleText="Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later."
-					submitHandler={this.onboardingHandler}
-				/>
+				<Grommet 
+					theme={grommetTheme}
+					full
+					background='light-1'
+				>
+					<SettingsModule
+						useDefaultSettings={true}
+						titleText='Welcome to RunPlanner'
+						subtitleText="Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later."
+						submitHandler={this.onboardingHandler}
+					/>
+				</Grommet>
 			);
 		};
 
 		// // short circuit for testing. remember to remove
 		// return (
-		// 	<SettingsModule
-		// 		useDefaultSettings={true}
-		// 		titleText='Welcome to RunPlanner'
-		// 		subtitleText="Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later."
-		// 		submitHandler={this.onboardingHandler}
-		// 	/>
+		// 	<Grommet 
+		// 		theme={grommetTheme}
+        //         full
+        //         background='light-1'
+		// 	>
+		// 		<SettingsModule
+		// 			useDefaultSettings={true}
+		// 			titleText='Welcome to RunPlanner'
+		// 			subtitleText="Let's set some settings. If you're unsure of anything, the defaults will take care of you, and you can always change your settings later."
+		// 			submitHandler={this.onboardingHandler}
+		// 		/>
+		// 	</Grommet>
 		// );
 
 		const currentMonth = this.state.currentMonth;
@@ -868,16 +881,18 @@ class MainPanel extends React.Component {
 						onEsc={() => this.toggleSettingsModule()}
 						onClickOutside={() => this.toggleSettingsModule()}
 					>
-						<Box
-							width='medium'
-						>
+						<div style={{overflow: 'scroll'}}>
+							<Button 
+								icon={<Close />}
+								onClick={() => this.setState({showSettingsModule: false})}
+							/>
 							<SettingsModule
 								useDefaultSettings={false}
 								titleText='Settings'
 								submitHandler={this.updateUserSettingsHandler}
 								existingSettings={this.state.userConfig}
-							/>	
-						</Box>
+							/>
+						</div>
 					</Layer>
 				}
 				<HeaderModule

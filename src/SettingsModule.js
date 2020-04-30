@@ -5,7 +5,6 @@ import {
     grommetTheme,
     defaultRunDurations,
     autofillDistributions,
-    defaultView,
     defaultSettings,
 } from './configs';
 
@@ -30,6 +29,7 @@ class SettingsModule extends React.Component {
             autofillConfig: PropTypes.shape({
                 autofillDistribution: PropTypes.string,
             }),
+            defaultView: PropTypes.string,
         }),
     };
 
@@ -69,81 +69,74 @@ class SettingsModule extends React.Component {
 
     render() {
         return (
-            <Grommet 
-				theme={grommetTheme}
-                full
-                background='light-1'
-			>
-                <Box
-                    margin='auto'
-                    pad='medium'
-                    width='66%'
-                    overflow='scroll'
-                >
-                    <Heading level={1}>{this.props.titleText}</Heading>
-                    <Paragraph>{this.props.subtitleText}</Paragraph>
+            <Box
+                margin='auto'
+                pad='large'
+                overflow='scroll'
+            >
+                <Heading level={1} margin='none'>{this.props.titleText}</Heading>
+                {this.props.subtitleText ? <Paragraph>{this.props.subtitleText}</Paragraph> : null }
 
-                    <Box width='medium'>
-                        <Heading level={5}>Timezone</Heading>
-                        <Select
-                            // options={['', 'US/Eastern', 'US/Central', 'US/Mountain', 'US/Pacific', 'US/Arizona', 'US/Alaska', 'US/Hawaii']}
-                            options={moment.tz.zonesForCountry('US')}
-                            value={this.state.mainTimezone}
-                            onChange={(res) => {
-                                this.setState({mainTimezone: res.option});
-                            }}
-                        />
-                    </Box>
-                    
-                    <Box>
-                        <Heading level={5}>Start of Week</Heading>
-                        <Tabs
-                            alignSelf='start'
-                            activeIndex={this.state.startingDayOfWeek}
-                            onActive={(index) => {this.setState({startingDayOfWeek: index})}}
-                        >
-                            {this.daysOfWeek.map(day => <Tab title={day} key={day}/>)}
-                        </Tabs>
-                    </Box>
-
-                    <Box width='medium'>
-                        <Heading level={5}>Default start time</Heading>
-                        <TimeEntry
-                            date={this.generateStartTimeString()}
-                            updateTimeCallback={(newTime => this.updateStartTime(newTime))}
-                        />
-                    </Box>
-
-                    <Box>
-                        <Heading level={5}>Default Run Duration (minutes)</Heading>
-                        <Tabs
-                            alignSelf='start'
-                            activeIndex={defaultRunDurations.indexOf(this.state.defaultRunDuration)}
-                            onActive={(index) => {this.setState({defaultRunDuration: defaultRunDurations[index]})}}
-                        >
-                            {defaultRunDurations.map(duration => <Tab title={String(duration)} key={duration}/>)}
-                        </Tabs>
-                    </Box>
-
-                    <Box>
-                        <Heading level={5}>AutoFill Distribution</Heading>
-                        <RadioButtonGroup
-                            name='autofill distribution selector'
-                            options={[...Object.values(autofillDistributions)]}
-                            value={this.state.autofillConfig.distribution}
-                            onChange={e => this.setState({autofillConfig: {distribution: e.target.value}})}
-                        />
-                    </Box>
-
-                    <Box margin={{top: 'small'}} width='small'>
-                        <Button 
-                            label='Submit'
-                            primary
-                            onClick={() => this.props.submitHandler(this.state)}
-                        />
-                    </Box>
+                <Box width='medium'>
+                    <Heading level={5}>Timezone</Heading>
+                    <Select
+                        // options={['', 'US/Eastern', 'US/Central', 'US/Mountain', 'US/Pacific', 'US/Arizona', 'US/Alaska', 'US/Hawaii']}
+                        options={moment.tz.zonesForCountry('US')}
+                        value={this.state.mainTimezone}
+                        onChange={(res) => {
+                            this.setState({mainTimezone: res.option});
+                        }}
+                    />
                 </Box>
-            </Grommet>
+
+                <Box>
+                    <Heading level={5}>Start of Week</Heading>
+                    <Tabs
+                        alignSelf='start'
+                        activeIndex={this.state.startingDayOfWeek}
+                        onActive={(index) => {this.setState({startingDayOfWeek: index})}}
+                    >
+                        {this.daysOfWeek.map(day => <Tab title={day} key={day}/>)}
+                    </Tabs>
+                </Box>
+
+                <Box width='medium'>
+                    <Heading level={5}>Default start time</Heading>
+                    <TimeEntry
+                        date={this.generateStartTimeString()}
+                        updateTimeCallback={(newTime => this.updateStartTime(newTime))}
+                    />
+                </Box>
+
+                <Box>
+                    <Heading level={5}>Default Run Duration (minutes)</Heading>
+                    <Tabs
+                        alignSelf='start'
+                        activeIndex={defaultRunDurations.indexOf(this.state.defaultRunDuration)}
+                        onActive={(index) => {this.setState({defaultRunDuration: defaultRunDurations[index]})}}
+                    >
+                        {defaultRunDurations.map(duration => <Tab title={String(duration)} key={duration}/>)}
+                    </Tabs>
+                </Box>
+
+                <Box>
+                    <Heading level={5}>AutoFill Distribution</Heading>
+                    <RadioButtonGroup
+                        name='autofill distribution selector'
+                        options={[...Object.values(autofillDistributions)]}
+                        value={this.state.autofillConfig.distribution}
+                        onChange={e => this.setState({autofillConfig: {distribution: e.target.value}})}
+                    />
+                </Box>
+
+                <Box margin={{top: 'small'}} width='small'>
+                    <Button 
+                        label='Submit'
+                        primary
+                        onClick={() => this.props.submitHandler(this.state)}
+                    />
+                </Box>
+            </Box>
         );
     }
 }
