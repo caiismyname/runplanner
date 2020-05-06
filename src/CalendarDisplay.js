@@ -343,7 +343,6 @@ class WeekDisplay extends React.Component {
 			if (isEmptyObject(value)) {
 				// Still have to return a div to keep flexbox spacing correct for the whole week.
 				return (<Box
-					border={true}
 					width='100%'
 					pad='xsmall'
 					background='black'
@@ -361,15 +360,28 @@ class WeekDisplay extends React.Component {
 						: [{ payload: { 'content': '', 'type': '', 'date': '', mileage: {goal: 0} }, id: '' }]}
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
 					addNewWorkoutHandler={(date, id, callback) => this.props.addNewWorkoutHandler(date, id, callback)}
-					isThisWeek={this.isThisWeek()}
+					// isThisWeek={this.isThisWeek()}
 					key={index}
 					mainMonth={this.props.mainMonth}
 				/>
 			);
 		}));
 
+		let border = false;
+		if (this.isThisWeek()) {
+			border = {
+				color: "white",
+				side: "horizontal",
+				size: "small",
+			}
+		}
+
 		return (
-			<Box direction='row' fill={true}>
+			<Box 
+				direction='row' 
+				fill={true}
+				border={border}
+			>
 				{dayCells}
 			</Box>
 		);
@@ -525,7 +537,7 @@ class DayCell extends React.Component {
 		addNewWorkoutHandler: PropTypes.func.isRequired,
 		date: PropTypes.string.isRequired,
 		payloads: PropTypes.arrayOf(payloadWithIDPropType).isRequired,
-		isThisWeek: PropTypes.bool.isRequired,
+		// isThisWeek: PropTypes.bool.isRequired,
 		mainMonth: PropTypes.string.isRequired,
 	};
 
@@ -546,9 +558,9 @@ class DayCell extends React.Component {
 	}
 
 	isToday() {
-		if (!this.props.isThisWeek) {
-			return (false);
-		}
+		// if (!this.props.isThisWeek) {
+		// 	return (false);
+		// }
 		return (moment().isSame(this.props.date, 'day'));
 	}
 
@@ -581,8 +593,6 @@ class DayCell extends React.Component {
 		let background = 'dark-1';
 		if (this.isToday()) {
 			background = 'accent-4';
-		} else if (this.props.isThisWeek) {
-			background = 'accent-3';
 		} else if (!this.isMainMonth()) {
 			background = 'black';
 		}
