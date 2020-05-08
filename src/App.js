@@ -37,7 +37,12 @@ class MonthHandler {
 	}
 
 	getStartingDayOfWeek(month, year) {
-		return new Date((month + 1) + "-01-" + year).getDay(); // Fucking American date formatting, not ISO
+		const date = new Date();
+		date.setFullYear(year);
+		date.setMonth(month);
+		date.setDate(1);
+
+		return (date.getDay());
 	}
 
 	getMonthInfo() {
@@ -50,7 +55,7 @@ class MonthHandler {
 	}
 
 	getMonthStart() {
-		return this.getMonthInfo().month + "-1";
+		return this.getMonthInfo().month + "-01";
 	}
 
 	getMonthEnd() {

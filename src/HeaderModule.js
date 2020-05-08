@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, Heading, Button } from 'grommet';
+import { Box, Heading } from 'grommet';
 import { Services } from 'grommet-icons';
 import { appName } from './configs';
 

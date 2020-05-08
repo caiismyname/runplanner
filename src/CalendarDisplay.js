@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Heading, Meter, TextInput, Header} from 'grommet';
+import { Box, Button, Heading, Meter, TextInput} from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
 import Loader from 'react-loader-spinner';

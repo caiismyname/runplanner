@@ -1,8 +1,7 @@
 import React from "react";
 import PropTypes from 'prop-types';
-import { Grommet, Box, Tabs, Tab, Button, Heading, Select, RadioButtonGroup, Paragraph} from 'grommet';
+import { Box, Tabs, Tab, Button, Heading, Select, RadioButtonGroup, Paragraph} from 'grommet';
 import { 
-    grommetTheme,
     defaultRunDurations,
     autofillDistributions,
     defaultSettings,
