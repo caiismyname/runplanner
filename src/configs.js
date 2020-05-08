@@ -26,7 +26,7 @@ export const timeFields = {
     MINUTE: "minute",
 };
 export const calendarDateDisplayFormat = "D";
-export const editModuleDateDisplayFormat = "M-d-YY";
+export const editModuleDateDisplayFormat = "M-D-YY";
 export const calendarDayLabelFormat = "dddd";
 
 export const defaultRunDurations = [15, 30, 45, 60, 75, 90, 105, 120];
