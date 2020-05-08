@@ -165,7 +165,15 @@ class Calendar extends React.Component {
 		const dayLabels = [<Box fill='horizontal'key={-1}></Box>]; // Prefill with spacer on left for goals
 		// Leave space for the goal module on the left
 		dayLabels.push(...daysOfWeek.map((value, index) => {
-			return (<Box align='center' fill='horizontal' key={index}><Heading level={5}>{value}</Heading></Box>);
+			return (
+				<Box 
+					align='center'
+					fill='horizontal'
+					key={index}
+				>
+					<Heading level={5} size='small' margin={{bottom: 'xsmall', top: 'none'}}>{value}</Heading>
+				</Box>
+			);
 		}));
 
 		return (
@@ -224,7 +232,7 @@ class Calendar extends React.Component {
 		});
 
 		return (
-			<Box height='100vh' background='light-4' key={this.props.currentMonth.month}>
+			<Box height='100vh' background='light-3' key={this.props.currentMonth.month}>
 				<Box gridArea='calendarControl' margin={{left: 'medium'}}>
 					{this.props.defaultView === defaultView.CALENDAR ?
 						<CalendarMonthControl
@@ -267,6 +275,7 @@ class CalendarMonthControl extends React.Component {
 				direction='row'
 				align='center'
 				gap='xsmall'
+				pad={{top: 'small'}}
 			>
 				<Box>
 					<Button onClick={() => this.props.decrementMonthHandler()} primary icon={<Subtract size='small'/>}/>
@@ -276,8 +285,10 @@ class CalendarMonthControl extends React.Component {
 				</Box>
 				<Heading 
 					level={3}
+					size='small'
 					onClick={() => this.props.resetToCurrentMonthHandler()}
 					style={{cursor: 'grab'}}
+					margin='none'
 				>
 					{moment(this.props.currentMonth.month).format("MMMM YYYY")}
 				</Heading>
@@ -344,7 +355,7 @@ class WeekDisplay extends React.Component {
 		);
 		dayCells.push(...days.map((value, index) => {
 			if (isEmptyObject(value)) {
-				// Still have to return a div to keep flexbox spacing correct for the whole week.
+				// Boxes for days that are not in this month
 				return (<Box
 					width='100%'
 					pad='xsmall'
@@ -363,7 +374,7 @@ class WeekDisplay extends React.Component {
 						: [{ payload: { 'content': '', 'type': '', 'date': '', mileage: {goal: 0} }, id: '' }]}
 					// updateDayContentFunc={(date, content) => this.props.updateDayContentFunc(date, content)}
 					addNewWorkoutHandler={(date, id, callback) => this.props.addNewWorkoutHandler(date, id, callback)}
-					// isThisWeek={this.isThisWeek()}
+					isThisWeek={this.isThisWeek()}
 					key={index}
 					mainMonth={this.props.mainMonth}
 					selectedWorkoutID={this.props.selectedWorkoutID}
@@ -371,20 +382,10 @@ class WeekDisplay extends React.Component {
 			);
 		}));
 
-		let border = false;
-		if (this.isThisWeek()) {
-			border = {
-				color: "white",
-				side: "horizontal",
-				size: "small",
-			}
-		}
-
 		return (
 			<Box 
 				direction='row' 
 				fill={true}
-				border={border}
 			>
 				{dayCells}
 			</Box>
@@ -420,6 +421,7 @@ class WeekGoalControl extends React.Component {
 	}
 
 	render() {
+		const backgroundColor = 'dark-1';
 		const autofillButton = 
 			<Box 
 				alignSelf='end' 
@@ -447,12 +449,15 @@ class WeekGoalControl extends React.Component {
 
 		const goalDisplay = 
 			<Box
+				style={{
+					borderBottom: '1px solid black',
+					borderRight: '1px solid black',
+				}}
 				width='100%'
-				border={true}
 				pad='xsmall'
 				justify='center'
 				align='center'
-				background='light-2'
+				background={backgroundColor}
 				onClick={() => this.setState({showEditGoal: true})}
 				focusIndicator={false}
 			>
@@ -493,10 +498,10 @@ class WeekGoalControl extends React.Component {
 				pad='xsmall'
 				justify='center'
 				align='start'
-				background='light-2'
+				background={backgroundColor}
 			>
 				<TextInput
-					placeholder='Week mileage Goal'
+					placeholder='Mileage Goal'
 					value={this.doesGoalExist() ? this.props.goal.payload.goalValue: ''}
 					onChange={(e) => {
 						this.handleGoalChange(Number(e.target.value));
@@ -517,11 +522,11 @@ class WeekGoalControl extends React.Component {
 				pad='xsmall'
 				justify='center'
 				align='center'
-				background='light-2'
+				background={backgroundColor}
 			>
 				<Loader
 					type="BallTriangle"
-					color={brandColor}
+					color={goalControlColor}
 					timeout={loaderTimeout}
 				 />
 			</Box>;
@@ -541,7 +546,7 @@ class DayCell extends React.Component {
 		addNewWorkoutHandler: PropTypes.func.isRequired,
 		date: PropTypes.string.isRequired,
 		payloads: PropTypes.arrayOf(payloadWithIDPropType).isRequired,
-		// isThisWeek: PropTypes.bool.isRequired,
+		isThisWeek: PropTypes.bool.isRequired,
 		mainMonth: PropTypes.string.isRequired,
 		selectedWorkoutID: PropTypes.string.isRequired,
 	};
@@ -579,7 +584,7 @@ class DayCell extends React.Component {
 			this.props.payloads.forEach((workout) => {
 
 				const label = workout.payload.mileage.goal !== 0
-					? workout.payload.mileage.goal + ' miles'
+					? workout.payload.mileage.goal + ' mi.'
 					: 'Run';
 
 				const isPrimary = workout.id === this.props.selectedWorkoutID;
@@ -601,6 +606,8 @@ class DayCell extends React.Component {
 		let background = 'dark-1';
 		if (this.isToday()) {
 			background = 'accent-4';
+		} else if (this.props.isThisWeek) {
+			background = 'light-3';
 		} else if (!this.isMainMonth()) {
 			background = 'black';
 		}
@@ -633,7 +640,10 @@ class DayCell extends React.Component {
 
 		return (
 			<Box
-				border={true}
+				style={{
+					borderBottom: '1px solid black',
+					borderRight: '1px solid black',
+				}}
 				direction='column'
 				width='100%'
 				pad='xsmall'
@@ -646,7 +656,7 @@ class DayCell extends React.Component {
 			>
 				<Heading 
 					level={3}
-					size='small'
+					size='xsmall'
 					margin='none'
 				>
 					{this.generateDisplayDate()}

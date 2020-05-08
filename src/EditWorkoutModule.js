@@ -7,7 +7,6 @@ import TimeEntry from './TimeEntryModule';
 import Loader from 'react-loader-spinner'
 
 import { 
-	brandColor,
 	statusCriticalColor,
 	loaderTimeout,
 } from './configs';

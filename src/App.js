@@ -857,7 +857,7 @@ class MainPanel extends React.Component {
 
 		const content =
 			<Grid
-				columns={['auto', 'medium']}
+				columns={['auto', '300px']}
 				rows={['xsmall', 'flex']}
 				fill={true}
 				areas={[

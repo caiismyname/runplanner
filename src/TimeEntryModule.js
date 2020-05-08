@@ -53,10 +53,10 @@ class TimeEntry extends React.Component {
 			<Box
 				direction='row'
 				gap='xxsmall'
-				align='center'
+				align='baseline'
 			>
 				{/* Hour */}
-				<div style={{width: '25%', fontSize: '3em'}}>
+				<div style={{width: '30%', fontSize: '3em'}}>
 					<TextInput
 						style={{textAlign: 'center'}}
 						value={this.generateDisplayHour()}
@@ -76,7 +76,7 @@ class TimeEntry extends React.Component {
 					/>
 				</div>
 				{/* Minute */}
-				<div style={{width: '25%', fontSize: '3em'}}>
+				<div style={{width: '30%', fontSize: '3em'}}>
 					<TextInput
 					    style={{textAlign: 'center'}}
 						value={this.generateDisplayMinute()}
@@ -103,6 +103,7 @@ class TimeEntry extends React.Component {
 							this.props.updateTimeCallback(this.generateNewDateTime(timeFields.HOUR, newHour));
 						}}
 						label={this.generateDisplayPeriod()}
+						color='dark-3' // to match TextArea color
 					/>
 				</div>
 			</Box>

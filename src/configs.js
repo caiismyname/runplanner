@@ -26,7 +26,7 @@ export const timeFields = {
     MINUTE: "minute",
 };
 export const calendarDateDisplayFormat = "D";
-export const editModuleDateDisplayFormat = "M-DD-YY";
+export const editModuleDateDisplayFormat = "M-d-YY";
 export const calendarDayLabelFormat = "dddd";
 
 export const defaultRunDurations = [15, 30, 45, 60, 75, 90, 105, 120];
@@ -80,7 +80,7 @@ export const autofillTypes = {
     WEEKLY_mileage_GOAL: "weekly_mileage_goal",
 };
 
-export const goalControlColor = 'neutral-3';
+export const goalControlColor = '#00739D'; // neutral-3
 export const brandColor = '#d99c18';
 
 export const grommetTheme = {
@@ -92,7 +92,7 @@ export const grommetTheme = {
         },
         colors: {
             brand: brandColor,
-            focus: 'neutral-4',
+            focus: brandColor,
         },
         meter: {
             color: goalControlColor,
@@ -100,7 +100,16 @@ export const grommetTheme = {
     },
     button: {
         border: {
-            radius: '8px',
+            radius: '10px',
+        },
+        padding: {
+            hortizontal: '1px',
+            vertical: '1px',
+        }
+    }, 
+    text: {
+        medium: {
+            size: '16px'
         }
     }
 };

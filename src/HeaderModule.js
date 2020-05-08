@@ -15,10 +15,10 @@ class HeaderModule extends React.Component {
             <Box
                 align='end'
                 gridArea='header'
-                pad='small'
+                pad='xsmall'
                 background='light-2'
             >
-                <Heading level={1} margin='none'>
+                <Heading level={1} margin='none' size='small'>
                     {appName}
                 </Heading>
                 <Box direction='row' gap='small'>
@@ -26,7 +26,7 @@ class HeaderModule extends React.Component {
                         style={{cursor: 'grab'}}
                         onClick={() => this.props.toggleSettingsPageFunc()}
                     />
-                    <Heading level={3} margin='none'>
+                    <Heading level={3} margin='none' size='xsmall'>
                         {this.props.name}
                     </Heading>
                 </Box>
