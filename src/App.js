@@ -921,6 +921,7 @@ class MainPanel extends React.Component {
 					defaultView={this.state.userConfig.defaultView}
 					startingDayOfWeek={this.state.userConfig.startingDayOfWeek}
 					mainTimezone={this.state.userConfig.mainTimezone}
+					selectedWorkoutID={editWorkoutModuleConfig.workoutID}
 				/>
 				<Box 
 					gridArea='editWorkoutModule'

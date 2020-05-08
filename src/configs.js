@@ -98,6 +98,11 @@ export const grommetTheme = {
             color: goalControlColor,
         },
     },
+    button: {
+        border: {
+            radius: '8px',
+        }
+    }
 };
 
 export const toSentenceCase = (word) => {

@@ -47,6 +47,7 @@ class Calendar extends React.Component {
 		).isRequired,
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
+		selectedWorkoutID: PropTypes.string.isRequired,
 	};
 
 	getPayloadsForDate(date) {
@@ -217,6 +218,7 @@ class Calendar extends React.Component {
 					autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
 					key={index}
 					mainMonth={this.props.currentMonth.month}
+					selectedWorkoutID={this.props.selectedWorkoutID}
 				/>
 			);
 		});
@@ -298,6 +300,7 @@ class WeekDisplay extends React.Component {
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
 		mainMonth: PropTypes.string,
+		selectedWorkoutID: PropTypes.string.isRequired,
 	};
 
 	computeWeekTotalmileage() {
@@ -363,6 +366,7 @@ class WeekDisplay extends React.Component {
 					// isThisWeek={this.isThisWeek()}
 					key={index}
 					mainMonth={this.props.mainMonth}
+					selectedWorkoutID={this.props.selectedWorkoutID}
 				/>
 			);
 		}));
@@ -539,6 +543,7 @@ class DayCell extends React.Component {
 		payloads: PropTypes.arrayOf(payloadWithIDPropType).isRequired,
 		// isThisWeek: PropTypes.bool.isRequired,
 		mainMonth: PropTypes.string.isRequired,
+		selectedWorkoutID: PropTypes.string.isRequired,
 	};
 
 	constructor(props) {
@@ -577,6 +582,8 @@ class DayCell extends React.Component {
 					? workout.payload.mileage.goal + ' miles'
 					: 'Run';
 
+				const isPrimary = workout.id === this.props.selectedWorkoutID;
+
 				content.push(
 					<Button
 						key={workout.id}
@@ -584,6 +591,7 @@ class DayCell extends React.Component {
 						label={label}
 						margin={{bottom: 'xsmall'}}
 						color={workout.payload.creationType === creationTypes.OWNER ? 'brand' : goalControlColor}
+						primary={isPrimary}
 					/>
 				);
 			});
