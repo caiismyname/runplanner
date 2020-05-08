@@ -1,5 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { Box, Heading, Grommet, Button } from 'grommet';
+import { grommetTheme } from './configs';
 
 class LoginPage extends React.Component {
     static propTypes = {
@@ -37,10 +39,27 @@ class LoginPage extends React.Component {
 
     render() {
         return (
-            <div>
-                <p>You are not signed in.</p>
-                <button id="authorize_button" onClick={() => this.handleAuthClick(null)}>Authorize</button>
-            </div>
+            <Grommet 
+                theme={grommetTheme}
+                full
+                background='dark-1'
+            >
+                <Box
+                    justify='center'
+                    align='center'
+                    height='75%'
+                    margin={{bottom:'25%'}}
+                >
+                    <Heading level={1} size='xlarge'>RunPlanner</Heading>
+                    <Heading level={3} textAlign='center'>Easily create training plans that sync with your Google Calendar</Heading> 
+                    <Button 
+                        id="authorize_button" 
+                        primary 
+                        onClick={() => this.handleAuthClick(null)}
+                        label='Authorize with Google'
+                    />
+                </Box>
+            </Grommet>
         );
     }
 }
