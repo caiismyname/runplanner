@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Heading } from 'grommet';
 import { Services } from 'grommet-icons';
-import { appName } from './configs';
+import { appName, dark1 } from './configs';
 
 class HeaderModule extends React.Component {
     static propTypes = {
@@ -16,7 +16,7 @@ class HeaderModule extends React.Component {
                 align='end'
                 gridArea='header'
                 pad='xsmall'
-                background='light-2'
+                background={dark1}
             >
                 <Heading level={1} margin='none' size='small'>
                     {appName}

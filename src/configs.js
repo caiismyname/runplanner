@@ -81,7 +81,10 @@ export const autofillTypes = {
 };
 
 export const goalControlColor = '#00739D'; // neutral-3
-export const brandColor = '#d99c18';
+export const brandColor = '#ff7315';
+export const dark1 = '#232020';
+export const dark2 = '#3a3535';
+export const light = '#f4f4f4';
 
 export const grommetTheme = {
     global: {
@@ -91,22 +94,25 @@ export const grommetTheme = {
             height: '20px',
         },
         colors: {
-            brand: brandColor,
+            brand: {
+                light: brandColor,
+                dark: brandColor,
+            },
             focus: brandColor,
+            text: {
+                dark: light,
+                light: dark2,
+            },
         },
         meter: {
             color: goalControlColor,
         },
     },
-    button: {
-        border: {
-            radius: '10px',
-        },
-        padding: {
-            hortizontal: '1px',
-            vertical: '1px',
-        }
-    }, 
+    // button: {
+    //     border: {
+    //         radius: '16px',
+    //     },
+    // }, 
     text: {
         medium: {
             size: '16px'

@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, Heading, TextInput, TextArea, FormField, RadioButtonGroup } from 'grommet';
 import { Save } from 'grommet-icons';
-import { workoutFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes } from './configs';
+import { workoutFields, editModuleDateDisplayFormat, payloadPropType, workoutTypes, brandColor } from './configs';
 import TimeEntry from './TimeEntryModule';
 import Loader from 'react-loader-spinner'
 
@@ -89,6 +89,7 @@ class EditWorkoutModule extends React.Component {
 						primary
 						icon={<Save />}
 						style={this.state.edited ? {} : {visibility: 'hidden'}}
+						color={brandColor}
 					/>
 				</Box>
 				<br/>

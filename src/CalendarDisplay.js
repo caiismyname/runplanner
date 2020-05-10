@@ -15,6 +15,9 @@ import {
 	getNumberOfDaysInMonth,
 	brandColor,
 	loaderTimeout,
+	dark1,
+	dark2,
+	light,
 } from './configs';
 import './App.css';
 
@@ -232,7 +235,7 @@ class Calendar extends React.Component {
 		});
 
 		return (
-			<Box height='100vh' background='light-3' key={this.props.currentMonth.month}>
+			<Box height='100vh' background={light} key={this.props.currentMonth.month}>
 				<Box gridArea='calendarControl' margin={{left: 'medium'}}>
 					{this.props.defaultView === defaultView.CALENDAR ?
 						<CalendarMonthControl
@@ -277,11 +280,11 @@ class CalendarMonthControl extends React.Component {
 				gap='xsmall'
 				pad={{top: 'small'}}
 			>
-				<Box>
-					<Button onClick={() => this.props.decrementMonthHandler()} primary icon={<Subtract size='small'/>}/>
+				<Box elevation='medium' round='small'>
+					<Button onClick={() => this.props.decrementMonthHandler()} icon={<Subtract size='small'/>}/>
 				</Box>
-				<Box>
-					<Button onClick={() => this.props.incrementMonthHandler()} primary icon={<Add size='small'/>}/>
+				<Box elevation='medium' round='small'>
+					<Button onClick={() => this.props.incrementMonthHandler()} icon={<Add size='small'/>}/>
 				</Box>
 				<Heading 
 					level={3}
@@ -382,10 +385,20 @@ class WeekDisplay extends React.Component {
 			);
 		}));
 
+		const border = !this.isThisWeek()
+			? false
+			: {
+				side: 'horizontal',
+				style: 'solid',
+				size: 'medium',
+				color: dark1,
+			}
+
 		return (
 			<Box 
 				direction='row' 
 				fill={true}
+				border={border}
 			>
 				{dayCells}
 			</Box>
@@ -421,7 +434,7 @@ class WeekGoalControl extends React.Component {
 	}
 
 	render() {
-		const backgroundColor = 'dark-1';
+		const backgroundColor = light;
 		const autofillButton = 
 			<Box 
 				alignSelf='end' 
@@ -450,7 +463,7 @@ class WeekGoalControl extends React.Component {
 		const goalDisplay = 
 			<Box
 				style={{
-					borderBottom: '1px solid black',
+					borderTop: '1px solid black',
 					borderRight: '1px solid black',
 				}}
 				width='100%'
@@ -467,10 +480,13 @@ class WeekGoalControl extends React.Component {
 						thickness='small'
 						size='xsmall'
 						alignSelf='center'
-						background='dark-4'
+						background={dark2}
 						round
 						max={this.props.goal.payload.goalValue}
-						values={[{value: this.props.totalmileage,}]}
+						values={[{
+							value: this.props.totalmileage,
+							color: goalControlColor,
+						}]}
 						zIndex={1}
 					/>
 				</div>
@@ -494,11 +510,14 @@ class WeekGoalControl extends React.Component {
 		const editDisplay = 
 			<Box
 				width='100%'
-				border={true}
 				pad='xsmall'
 				justify='center'
 				align='start'
 				background={backgroundColor}
+				style={{
+					borderTop: '1px solid black',
+					borderRight: '1px solid black',
+				}}
 			>
 				<TextInput
 					placeholder='Mileage Goal'
@@ -518,11 +537,14 @@ class WeekGoalControl extends React.Component {
 		const loader = 
 			<Box
 				width='100%'
-				border={true}
 				pad='xsmall'
 				justify='center'
 				align='center'
 				background={backgroundColor}
+				style={{
+					borderTop: '1px solid black',
+					borderRight: '1px solid black',
+				}}
 			>
 				<Loader
 					type="BallTriangle"
@@ -587,29 +609,44 @@ class DayCell extends React.Component {
 					? workout.payload.mileage.goal + ' mi.'
 					: 'Run';
 
-				const isPrimary = workout.id === this.props.selectedWorkoutID;
+				const borderColor = workout.id === this.props.selectedWorkoutID
+					? brandColor
+					: light
 
 				content.push(
-					<Button
+					<Box 
+						elevation='large'
 						key={workout.id}
 						onClick={() => this.props.addNewWorkoutHandler(workout.payload.startDate, workout.id)}
-						label={label}
-						margin={{bottom: 'xsmall'}}
-						color={workout.payload.creationType === creationTypes.OWNER ? 'brand' : goalControlColor}
-						primary={isPrimary}
-					/>
+						style={{
+							color: workout.payload.creationType === creationTypes.OWNER ? 'brand' : goalControlColor,
+							fontWeight: 'bold',
+							fontSize: '1.4em',
+						}}
+						pad='xsmall'
+						round='xsmall'
+						background={light}
+						border={{
+							size: 'medium',
+							style: 'solid',
+							side: 'all',
+							color: borderColor,
+						}}
+					>
+					{label}
+					</Box>
 				);
 			});
 		}
 
 		// temp for highlighting week/day
-		let background = 'dark-1';
+		let background = light;
 		if (this.isToday()) {
-			background = 'accent-4';
+			background = brandColor;
 		} else if (this.props.isThisWeek) {
-			background = 'light-3';
+			background = light;
 		} else if (!this.isMainMonth()) {
-			background = 'black';
+			background = dark2;
 		}
 
 		const addButton = 
@@ -624,25 +661,30 @@ class DayCell extends React.Component {
 						height="100%"
 					/>
 				:
-					<Button
+					<Box 
+						elevation='medium'
+						round='medium'
 						onClick={() => {
 							this.setState({loadingState: true});
 							this.props.addNewWorkoutHandler(this.props.date, "", (isSuccess) => {
 								this.setState({loadingState: false});
 							});
 						}}
+					>
+					<Button
 						primary
-						color='brand'
+						color={dark1}
 						icon={<Add size='small'/>}
 					/>
+					</Box>
 				}
 			</Box>;
 
 		return (
 			<Box
 				style={{
-					borderBottom: '1px solid black',
-					borderRight: '1px solid black',
+					borderTop: '1px solid ' + dark1,
+					borderRight: '1px solid ' + dark1,
 				}}
 				direction='column'
 				width='100%'
@@ -657,11 +699,16 @@ class DayCell extends React.Component {
 				<Heading 
 					level={3}
 					size='xsmall'
-					margin='none'
+					margin='xsmall'
 				>
 					{this.generateDisplayDate()}
 				</Heading>
-				{content}
+				<Box
+					direction='column'
+					gap='xsmall'
+				>
+					{content}
+				</Box>
 				{ (this.state.showAddButton || this.state.loadingState) ? addButton : null}
 			</Box>
 		);

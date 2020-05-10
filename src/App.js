@@ -16,7 +16,9 @@ import {
 	grommetTheme, 
 	workoutTypes,
 	getNumberOfDaysInMonth,
-	autofillDistributions
+	autofillDistributions,
+	dark1,
+	light,
 } from './configs';
 import LoginPage from "./LoginPage";
 import SettingsModule from "./SettingsModule";
@@ -817,7 +819,7 @@ class MainPanel extends React.Component {
 				<Grommet 
 					theme={grommetTheme}
 					full
-					background='light-1'
+					background={light}
 				>
 					<SettingsModule
 						useDefaultSettings={true}
@@ -930,7 +932,7 @@ class MainPanel extends React.Component {
 				/>
 				<Box 
 					gridArea='editWorkoutModule'
-					background='light-2'
+					background={dark1}
 				>
 					<EditWorkoutModule
 						show={editWorkoutModuleConfig.showingEditWorkoutModule}
@@ -942,7 +944,6 @@ class MainPanel extends React.Component {
 						saveFunc={() => this.updateDB()}
 						name={this.state.name}
 					/>
-					<Box background='light-2'></Box>
 				</Box>
 			</Grid>;
 
