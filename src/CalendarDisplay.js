@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Heading, Meter, TextInput} from 'grommet';
+import { Box, Button, Heading, Meter, TextInput, Stack } from 'grommet';
 import { Add, Subtract, Share } from 'grommet-icons';
 import PropTypes from 'prop-types';
 import Loader from 'react-loader-spinner';
@@ -622,6 +622,7 @@ class DayCell extends React.Component {
 							color: workout.payload.creationType === creationTypes.OWNER ? 'brand' : goalControlColor,
 							fontWeight: 'bold',
 							fontSize: '1.4em',
+							minHeight: '25%',
 						}}
 						pad='xsmall'
 						round='xsmall'
@@ -633,7 +634,7 @@ class DayCell extends React.Component {
 							color: borderColor,
 						}}
 					>
-					{label}
+						{label}
 					</Box>
 				);
 			});
@@ -650,8 +651,11 @@ class DayCell extends React.Component {
 		}
 
 		const addButton = 
-			// margin.top = auto is so the button sticks to the bottom
-			<Box alignSelf='start' margin={{top: 'auto'}}>
+			<Box 
+				alignSelf='start'
+				margin={{top: 'auto'}} // so the button sticks to the bottom
+				pad='xsmall'
+			>
 				{this.state.loadingState
 				? 
 					<Loader
@@ -681,36 +685,39 @@ class DayCell extends React.Component {
 			</Box>;
 
 		return (
-			<Box
-				style={{
-					borderTop: '1px solid ' + dark1,
-					borderRight: '1px solid ' + dark1,
-				}}
-				direction='column'
-				width='100%'
-				pad='xsmall'
-				alignContent='start'
-				algin='start'
-				overflow='scroll'
+			<Stack 
+				anchor='bottom-right'
+				fill
 				onMouseEnter={() => {this.setState({showAddButton: true})}}
 				onMouseLeave={() => {this.setState({showAddButton: false})}}
-				background={background}
 			>
-				<Heading 
-					level={3}
-					size='xsmall'
-					margin='xsmall'
-				>
-					{this.generateDisplayDate()}
-				</Heading>
 				<Box
+					style={{
+						borderTop: '1px solid ' + dark1,
+						borderRight: '1px solid ' + dark1,
+					}}
 					direction='column'
+					// height='100%'
 					gap='xsmall'
+					alignContent='start'
+					algin='start'
+					overflow='scroll'
+					margin='auto'
+					background={background}
+					fill
+					pad='xsmall'
 				>
-					{content}
+					<Heading 
+						level={3}
+						size='xsmall'
+						margin='xsmall'
+					>
+						{this.generateDisplayDate()}
+					</Heading>
+					{content}	
 				</Box>
 				{ (this.state.showAddButton || this.state.loadingState) ? addButton : null}
-			</Box>
+			</Stack>
 		);
 	}
 }
