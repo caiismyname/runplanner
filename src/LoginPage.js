@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Heading, Grommet, Button } from 'grommet';
-import { grommetTheme } from './configs';
+import { grommetTheme, brandColor } from './configs';
 
 class LoginPage extends React.Component {
     static propTypes = {
@@ -37,6 +37,13 @@ class LoginPage extends React.Component {
         });
     }
 
+    handleSigninClick(event) {
+        window.gapi.auth2.getAuthInstance().signIn().then(status => {
+            console.log(status);
+            this.props.signinHandler(status);
+        }) 
+    }
+
     render() {
         return (
             <Grommet 
@@ -52,12 +59,21 @@ class LoginPage extends React.Component {
                 >
                     <Heading level={1} size='xlarge'>RunPlanner</Heading>
                     <Heading level={3} textAlign='center'>Easily create training plans that sync with your Google Calendar</Heading> 
-                    <Button 
-                        id="authorize_button" 
-                        primary 
-                        onClick={() => this.handleAuthClick(null)}
-                        label='Authorize with Google'
-                    />
+                    <Box gap='medium'>
+                        <Button 
+                            id="signin_button" 
+                            primary 
+                            onClick={() => this.handleSigninClick(null)}
+                            label='Sign in'
+                            color={brandColor}
+                        />
+                        <Button 
+                            id="authorize_button" 
+                            onClick={() => this.handleAuthClick(null)}
+                            label='Sign up with Google'
+                            color={brandColor}
+                        />
+                    </Box>
                 </Box>
             </Grommet>
         );
