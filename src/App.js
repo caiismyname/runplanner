@@ -254,23 +254,30 @@ class WorkoutHandler {
 		});
 	}
 
+	removeWorkoutsLocally(workoutIDs, callback) {
+		workoutIDs.forEach(deleted => {
+			delete this.workouts[deleted.id];
+			const formattedStartDate = moment(deleted.startDate).format(serverDateFormat);
+			const toDeleteIdx = this.dates[formattedStartDate].indexOf(deleted.id);
+			this.dates[formattedStartDate].splice(toDeleteIdx, 1);
+
+			// Need to delete the list otherwise the Calendar won't know to generate 
+			// empty prop for the DayCell
+			if (this.dates[formattedStartDate].length === 0) {
+				delete this.dates[formattedStartDate];
+			}
+		});
+
+		if (callback) {
+			callback(this.generateDisplayWorkouts());
+		}
+	}
+
 	deleteWorkouts(workoutIDs, callback) {
 		axios.post(dbAddress + "deleteworkouts", { userID: this.userID, toDelete: workoutIDs })
 			.then(res => {
 				if (res) {
-					res.data.deleted.forEach(deleted => {
-						delete this.workouts[deleted.id];
-						const formattedStartDate = moment(deleted.startDate).format(serverDateFormat);
-						const toDeleteIdx = this.dates[formattedStartDate].indexOf(deleted.id);
-						this.dates[formattedStartDate].splice(toDeleteIdx, 1);
-
-						// Need to delete the list otherwise the Calendar won't know to generate 
-						// empty prop for the DayCell
-						if (this.dates[formattedStartDate].length === 0) {
-							delete this.dates[formattedStartDate];
-						}
-					})
-
+					this.removeWorkoutsLocally(res.data.deleted);
 					callback(this.generateDisplayWorkouts());
 				} else {
 					console.log("Deleting failed");
@@ -787,7 +794,17 @@ class MainPanel extends React.Component {
 
 				this.populateWorkouts();
 				callback(true);
-			})
+			});
+	}
+
+	clearWorkoutsForGoal(goalID, callback) {
+		axios.post(dbAddress + 'clearworkoutsforgoal', { userID: this.state.userID, goalID: goalID })
+			.then(res => {
+				this.state.workoutHandler.removeWorkoutsLocally(res.data.deleted, (newDisplayWorkouts) => {
+					this.setState({workouts: newDisplayWorkouts});
+				});
+				callback(true);
+			});
 	}
 
 	deleteWeeklyGoal(goalID) {
@@ -923,6 +940,7 @@ class MainPanel extends React.Component {
 					workouts={this.state.workouts}
 					sendWeeklyGoalsToDBHandler={(newGoals) => this.sendWeeklyGoalsToDB(newGoals)}
 					autofillWeeklyGoalHandler={(goalID, callback) => this.autofillWeeklyGoal(goalID, callback)}
+					clearWorkoutsForGoalHandler={(goalID, callback) => this.clearWorkoutsForGoal(goalID, callback)}
 					weeklyGoals={this.state.weeklyGoals}
 					// deadline={this.state.userConfig.countdownConfig.deadline}
 					defaultView={this.state.userConfig.defaultView}

@@ -47,9 +47,9 @@ const deleteWorkouts = (workoutsToDelete, userID, callback) => {
 
     workoutsToDelete.forEach(id => {
         const promise = new Promise(function (resolve, reject) {
+            console.log(id);
             Workouts.findById(id, function (err, workout) {
                 if (!workout) {
-                    res.status(404).send("Workout not found");
                     reject();
                 } else {
                     const startDate = workout.payload.startDate;
@@ -121,16 +121,22 @@ const updateWorkouts = (workoutsToUpdate, userID, callback) => {
     )
 };
 
-const getWorkoutsForOwnerForDateRange = (ownerID, startDate, endDate, callback) => {
+const getWorkoutsForOwnerForDateRange = (ownerID, startDate, endDate, callback, additionalFilters) => {
     proceedIfUserExists(ownerID, (owner) => {
-        Workouts.find(
-            {
-                "payload.startDate": {
-                    $gte: new Date(startDate),
-                    $lte: new Date(endDate),
-                },
-                "owner": ownerID,
+        let query =  {
+            "payload.startDate": {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
             },
+            "owner": ownerID,
+        };
+
+        if (additionalFilters) {
+            query = {...query, ...additionalFilters};
+        }
+
+        Workouts.find(
+            query,
             (err, items) => {
                 if (err) {
                     console.log(err);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Button, Heading, Meter, TextInput, Stack } from 'grommet';
-import { Add, Subtract, Share } from 'grommet-icons';
+import { Add, Subtract, Share, Close } from 'grommet-icons';
 import PropTypes from 'prop-types';
 import Loader from 'react-loader-spinner';
 import { 
@@ -50,6 +50,7 @@ class Calendar extends React.Component {
 		).isRequired,
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
+		clearWorkoutsForGoalHandler: PropTypes.func,
 		selectedWorkoutID: PropTypes.string.isRequired,
 	};
 
@@ -227,6 +228,7 @@ class Calendar extends React.Component {
 					goal={thisWeekGoal}
 					sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
 					autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
+					clearWorkoutsForGoalHandler={(goalID, callback) => this.props.clearWorkoutsForGoalHandler(goalID, callback)}
 					key={index}
 					mainMonth={this.props.currentMonth.month}
 					selectedWorkoutID={this.props.selectedWorkoutID}
@@ -313,6 +315,7 @@ class WeekDisplay extends React.Component {
 		goal: weeklyGoalPayloadPropType.isRequired,
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
+		clearWorkoutsForGoalHandler: PropTypes.func.isRequired,
 		mainMonth: PropTypes.string,
 		selectedWorkoutID: PropTypes.string.isRequired,
 	};
@@ -354,6 +357,7 @@ class WeekDisplay extends React.Component {
 				totalmileage={this.computeWeekTotalmileage()}
 				sendWeeklyGoalsToDBHandler={newGoals => this.props.sendWeeklyGoalsToDBHandler(newGoals)}
 				autofillWeeklyGoalHandler={(goalID, callback) => this.props.autofillWeeklyGoalHandler(goalID, callback)}
+				clearWorkoutsForGoalHandler={(goalID, callback) => this.props.clearWorkoutsForGoalHandler(goalID, callback)}
 			/>
 		);
 		dayCells.push(...days.map((value, index) => {
@@ -412,6 +416,7 @@ class WeekGoalControl extends React.Component {
 		totalmileage: PropTypes.number,
 		sendWeeklyGoalsToDBHandler: PropTypes.func.isRequired,
 		autofillWeeklyGoalHandler: PropTypes.func,
+		clearWorkoutsForGoalHandler: PropTypes.func.isRequired,
 	}
 
 	constructor(props) {
@@ -511,14 +516,20 @@ class WeekGoalControl extends React.Component {
 			<Box
 				width='100%'
 				pad='xsmall'
-				justify='center'
+				justify='start'
 				align='start'
 				background={backgroundColor}
 				style={{
 					borderTop: '1px solid black',
 					borderRight: '1px solid black',
 				}}
+				gap='xsmall'
 			>
+				<Button
+					onClick={() => {this.setState({showEditGoal: false})}}
+					color={goalControlColor}
+					icon={<Close />}
+				/>
 				<TextInput
 					placeholder='Mileage Goal'
 					value={this.doesGoalExist() ? this.props.goal.payload.goalValue: ''}
@@ -527,11 +538,18 @@ class WeekGoalControl extends React.Component {
 					}}
 				/>
 				<Button
-					onClick={() => {this.setState({showEditGoal: false})}}
-					margin={{top: 'small'}}
 					color={goalControlColor}
-					label='Close'
+					label='Clear'
+					onClick={() => {
+						this.setState({loadingState: true});
+						this.props.clearWorkoutsForGoalHandler(this.props.goal.goalID, (success) => {
+							if (success) {
+								this.setState({loadingState: false});
+							}
+						})}
+					}
 				/>
+				
 			</Box>
 
 		const loader = 
